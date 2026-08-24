@@ -1,17 +1,21 @@
-export default function ProductCard() {
+export default function ProductCard({ producto }) {
+  if (!producto) return null;
+
+  const { nombre, precio_final, cuotas_cantidad, cuotas_valor, garantia_meses } = producto;
+
   return (
     <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 w-full">
 
       {/* === IMAGEN CON BADGE === */}
       <div className="relative w-full h-52">
         <img
-          src="https://placehold.co/400x200/c9a96e/fff?text=Flan"
-          alt="Flan de Chocolate"
+          src="https://placehold.co/400x200/c9a96e/fff?text=Producto"
+          alt={nombre}
           className="w-full h-full object-cover"
         />
         {/* Badge semitransparente arriba a la izquierda */}
         <span className="absolute top-3 left-3 bg-black/50 text-white text-xs font-semibold px-2.5 py-1 rounded-full tracking-wide">
-          Tradicional
+          {garantia_meses > 0 ? `Garantía: ${garantia_meses} meses` : 'Sin garantía'}
         </span>
       </div>
 
@@ -21,16 +25,16 @@ export default function ProductCard() {
         {/* Nombre y Precio en la misma fila */}
         <div className="flex justify-between items-baseline gap-2">
           <h2 className="font-serif text-gray-900 text-lg font-bold leading-snug">
-            Flan de Chocolate
+            {nombre}
           </h2>
           <span className="text-amber-900 font-bold text-base whitespace-nowrap">
-            $5000
+            ${precio_final}
           </span>
         </div>
 
-        {/* Descripción */}
+        {/* Descripción (Cuotas) */}
         <p className="text-gray-400 text-xs leading-relaxed">
-          Intenso chocolate semiamargo con base de caramelo artesanal.
+          {cuotas_cantidad} cuotas de ${cuotas_valor}
         </p>
 
         {/* Botón ancho completo */}
