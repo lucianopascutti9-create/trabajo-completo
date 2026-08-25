@@ -1,63 +1,168 @@
-export default function ProductCard({ producto }) {
+import React, { useState } from 'react';
+
+export default function ProductCard({ producto, onSelectProduct, onAddToCart }) {
+  const [isAddedAnim, setIsAddedAnim] = useState(false);
+
   if (!producto) return null;
 
-  const { nombre, precio_final, cuotas_cantidad, cuotas_valor, garantia_meses } = producto;
+  const {
+    nombre,
+    precio,
+    precio_final,
+    precio_anterior,
+    subtitulo,
+    categoria,
+    badge,
+    rating,
+    reviews_count,
+    cuotas_cantidad = 3,
+    cuotas_valor,
+    imagen,
+    porciones
+  } = producto;
+
+  const precioMostrar = precio_final ?? precio ?? 0;
+  const cuotaEstimada = cuotas_valor || (precioMostrar / (cuotas_cantidad || 3)).toFixed(0);
+
+  const handleAddToCart = (e) => {
+    e.stopPropagation();
+    setIsAddedAnim(true);
+    if (onAddToCart) {
+      onAddToCart(producto, 1);
+    }
+    setTimeout(() => {
+      setIsAddedAnim(false);
+    }, 1200);
+  };
 
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 w-full">
-
-      {/* === IMAGEN CON BADGE === */}
-      <div className="relative w-full h-52">
+    <div 
+      onClick={() => onSelectProduct && onSelectProduct(producto)}
+      className="group bg-white rounded-3xl overflow-hidden border border-amber-900/10 shadow-sm hover:shadow-xl hover:border-amber-500/30 transition-all duration-300 flex flex-col cursor-pointer transform hover:-translate-y-1 relative"
+    >
+      {/* === IMAGEN CON BADGES === */}
+      <div className="relative w-full h-64 overflow-hidden bg-amber-50">
         <img
-          src="https://placehold.co/400x200/c9a96e/fff?text=Producto"
+          src={imagen || "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=800&q=80"}
           alt={nombre}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out"
+          loading="lazy"
         />
-        {/* Badge semitransparente arriba a la izquierda */}
-        <span className="absolute top-3 left-3 bg-black/50 text-white text-xs font-semibold px-2.5 py-1 rounded-full tracking-wide">
-          {garantia_meses > 0 ? `Garantía: ${garantia_meses} meses` : 'Sin garantía'}
-        </span>
-      </div>
 
-      {/* === CONTENIDO === */}
-      <div className="p-4 flex flex-col gap-2">
+        {/* Gradiente sutil inferior para legibilidad */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 opacity-80 group-hover:opacity-90 transition-opacity"></div>
 
-        {/* Nombre y Precio en la misma fila */}
-        <div className="flex justify-between items-baseline gap-2">
-          <h2 className="font-serif text-gray-900 text-lg font-bold leading-snug">
-            {nombre}
-          </h2>
-          <span className="text-amber-900 font-bold text-base whitespace-nowrap">
-            ${precio_final}
-          </span>
+        {/* Badges superiores */}
+        <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between pointer-events-none">
+          {badge ? (
+            <span className="bg-amber-950/90 text-amber-200 text-[11px] font-bold px-3 py-1 rounded-full backdrop-blur-md shadow-sm border border-amber-500/30">
+              {badge}
+            </span>
+          ) : (
+            <span className="bg-amber-950/80 text-amber-100 text-[11px] font-semibold px-2.5 py-0.5 rounded-full">
+              {categoria || 'Flan Artesanal'}
+            </span>
+          )}
+
+          {rating && (
+            <span className="bg-white/95 text-amber-950 text-xs font-bold px-2.5 py-1 rounded-full shadow-sm flex items-center gap-1">
+              <span className="text-amber-500">★</span>
+              <span>{rating}</span>
+              {reviews_count && (
+                <span className="text-stone-400 font-normal text-[10px]">({reviews_count})</span>
+              )}
+            </span>
+          )}
         </div>
 
-        {/* Descripción (Cuotas) */}
-        <p className="text-gray-400 text-xs leading-relaxed">
-          {cuotas_cantidad} cuotas de ${cuotas_valor}
-        </p>
-
-        {/* Botón ancho completo */}
-        <button className="mt-1 w-full bg-[#6b3112] hover:bg-[#7c3a16] active:scale-[0.98] text-white text-sm font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer">
-          {/* Ícono de carrito SVG */}
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-            />
-          </svg>
-          Agregar al carrito
-        </button>
+        {/* Etiqueta de porciones inferior sobre la foto */}
+        {porciones && (
+          <div className="absolute bottom-3 left-3.5">
+            <span className="bg-black/60 text-stone-200 text-[11px] font-medium px-2.5 py-0.5 rounded-md backdrop-blur-xs">
+              🍽️ {porciones.split('(')[0]}
+            </span>
+          </div>
+        )}
       </div>
 
+      {/* === CONTENIDO DE LA TARJETA === */}
+      <div className="p-5 flex flex-col flex-1 justify-between gap-4">
+        <div>
+          {/* Categoría pill */}
+          <span className="text-[11px] uppercase tracking-wider text-amber-800 font-bold block mb-1">
+            {categoria || 'Tradicional'}
+          </span>
+
+          {/* Nombre */}
+          <h3 className="font-serif text-xl font-bold text-stone-900 group-hover:text-amber-900 transition-colors leading-snug">
+            {nombre}
+          </h3>
+
+          {/* Subtítulo / Descripción corta */}
+          <p className="text-stone-500 text-xs mt-1.5 line-clamp-2 leading-relaxed">
+            {subtitulo || producto.descripcion_corta || 'Delicioso flan tradicional bañado en caramelo artesanal punto toffee.'}
+          </p>
+        </div>
+
+        {/* Bloque de Precio y Financiación */}
+        <div className="pt-3 border-t border-amber-900/5">
+          <div className="flex items-baseline justify-between gap-2">
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="font-serif text-2xl font-black text-amber-950">
+                  ${precioMostrar.toLocaleString('es-AR')}
+                </span>
+                {precio_anterior && (
+                  <span className="text-xs text-stone-400 line-through">
+                    ${precio_anterior.toLocaleString('es-AR')}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-amber-800 font-semibold mt-0.5">
+                💳 {cuotas_cantidad} cuotas sin interés de ${Math.round(cuotaEstimada).toLocaleString('es-AR')}
+              </p>
+            </div>
+          </div>
+
+          {/* Botones de acción: Ver Detalle y Agregar al Carrito */}
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <button
+              onClick={() => onSelectProduct && onSelectProduct(producto)}
+              className="px-3 py-2.5 rounded-xl border border-amber-900/20 hover:bg-amber-50 text-amber-950 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span>Ver Ficha</span>
+              <svg className="w-3.5 h-3.5 text-amber-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <button
+              onClick={handleAddToCart}
+              className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer ${
+                isAddedAnim
+                  ? 'bg-emerald-700 text-white scale-95'
+                  : 'bg-amber-900 hover:bg-amber-950 text-amber-50 hover:shadow-md'
+              }`}
+            >
+              {isAddedAnim ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>¡Listo!</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5 text-amber-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <span>Agregar</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
