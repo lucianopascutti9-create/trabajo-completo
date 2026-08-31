@@ -17,6 +17,49 @@ function App() {
   const [productos, setProductos] = useState(FLANES_DATA);
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
+  
+  // Pagination & Search States
+  const [page, setPage] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [limit] = useState(6); // Asumiendo un límite, ej 6
+
+  // Sincronizar estado con la URL para el historial del navegador (Botones Atrás/Adelante)
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      setCurrentView(params.get('view') || 'catalogo');
+      setPage(parseInt(params.get('page') || '0', 10));
+      setSearchQuery(params.get('q') || '');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    // Leer estado inicial de la URL al cargar
+    handlePopState();
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Actualizar URL cuando el estado cambie
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const currentViewParam = params.get('view') || 'catalogo';
+    const currentPageParam = parseInt(params.get('page') || '0', 10);
+    const currentQParam = params.get('q') || '';
+
+    // Solo agregar al historial si realmente hubo un cambio respecto a la URL actual
+    if (currentView !== currentViewParam || page !== currentPageParam || searchQuery !== currentQParam) {
+      const newParams = new URLSearchParams();
+      if (currentView !== 'catalogo') newParams.set('view', currentView);
+      if (page > 0) newParams.set('page', page);
+      if (searchQuery) newParams.set('q', searchQuery);
+      
+      const qs = newParams.toString();
+      const newUrl = window.location.pathname + (qs ? '?' + qs : '');
+      window.history.pushState({}, '', newUrl);
+    }
+  }, [currentView, page, searchQuery]);
+
+
 
   // Producto actualmente seleccionado en la Ficha de Detalle
   const [selectedProduct, setSelectedProduct] = useState(FLANES_DATA[0]);
@@ -44,7 +87,7 @@ function App() {
   // Intentar cargar productos desde la API de backend, con fallback a FLANES_DATA
   useEffect(() => {
     setIsLoading(true);
-    getProductos()
+    getProductos(page, limit, searchQuery)
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           // Unir datos de API con las fotos e información enriquecida si es necesario
@@ -59,9 +102,12 @@ function App() {
             };
           });
           setProductos(merged);
-          setSelectedProduct(merged[0]);
+          // Only set selected product on first load if none selected
+          if (page === 0 && !searchQuery) {
+            setSelectedProduct(merged[0]);
+          }
         } else {
-          setProductos(FLANES_DATA);
+          setProductos(page === 0 ? FLANES_DATA : []);
         }
         setIsLoading(false);
       })
@@ -72,7 +118,7 @@ function App() {
         setProductos(FLANES_DATA);
         setIsLoading(false);
       });
-  }, []);
+  }, [page, limit, searchQuery]);
 
   // Total de unidades en el carrito
   const totalCartCount = cart.reduce((total, item) => total + item.cantidad, 0);
@@ -185,6 +231,10 @@ function App() {
             onAddToCart={handleAddToCart}
             isLoading={isLoading}
             error={apiError}
+            page={page}
+            setPage={setPage}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
           />
         )}
 

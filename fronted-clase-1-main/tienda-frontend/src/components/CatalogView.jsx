@@ -7,10 +7,13 @@ export default function CatalogView({
   onSelectProduct, 
   onAddToCart,
   isLoading,
-  error 
+  error,
+  page,
+  setPage,
+  searchQuery,
+  setSearchQuery
 }) {
   const [selectedCategory, setSelectedCategory] = useState('todos');
-  const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('destacados');
 
   // Filtrado y ordenamiento de productos
@@ -163,7 +166,10 @@ export default function CatalogView({
                   type="text"
                   placeholder="Buscar flan o sabor..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setPage(0);
+                  }}
                   className="w-full pl-9 pr-8 py-2.5 rounded-2xl border border-stone-200 focus:border-amber-700 focus:ring-2 focus:ring-amber-200 outline-none text-xs font-medium text-stone-800 bg-stone-50 transition-all"
                 />
                 <svg className="w-4 h-4 text-stone-400 absolute left-3 top-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -171,7 +177,10 @@ export default function CatalogView({
                 </svg>
                 {searchQuery && (
                   <button 
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => {
+                      setSearchQuery('');
+                      setPage(0);
+                    }}
                     className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-700 text-xs"
                   >
                     ✕
@@ -259,6 +268,28 @@ export default function CatalogView({
             ))}
           </div>
         )}
+
+        {/* Paginación */}
+        <div className="flex justify-center items-center gap-4 mt-12">
+          <button
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-colors ${
+              page === 0 
+                ? 'bg-stone-200 text-stone-400 cursor-not-allowed' 
+                : 'bg-amber-900 text-white hover:bg-amber-800 shadow-md cursor-pointer'
+            }`}
+          >
+            Anterior
+          </button>
+          <span className="text-stone-600 font-medium">Página {page}</span>
+          <button
+            onClick={() => setPage(p => p + 1)}
+            className="px-5 py-2.5 rounded-xl font-bold text-sm bg-amber-900 text-white hover:bg-amber-800 shadow-md transition-colors cursor-pointer"
+          >
+            Siguiente
+          </button>
+        </div>
 
       </section>
 
