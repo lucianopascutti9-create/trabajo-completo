@@ -14,6 +14,7 @@ from app.database import Base, engine
 from app import models  # noqa: F401 — necesario para que Base registre los modelos
 from app.core.config import settings
 from app.routers import productos
+from app.routers import auth
 
 # ---------------------------------------------------------------------------
 # Creación de tablas en PostgreSQL al iniciar la aplicación.
@@ -52,6 +53,7 @@ app.add_middleware(
 # Routers
 # ---------------------------------------------------------------------------
 
+app.include_router(auth.router)
 app.include_router(productos.router)
 
 

@@ -3,7 +3,7 @@ app/models.py
 Modelos ORM de SQLAlchemy — representan las tablas de la base de datos.
 """
 
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -32,15 +32,24 @@ class Usuario(Base):
     """
     Tabla `usuarios` en PostgreSQL.
     Representa a cada cliente registrado en el e-commerce.
+
+    Ley 25.326 (Protección de Datos Personales):
+    - hashed_password   : la contraseña NUNCA se almacena en texto plano.
+    - acepto_tratamiento: registra el consentimiento explícito del usuario
+                          al momento del registro (Art. 5, Ley 25.326).
+    - fecha_consentimiento: timestamp UTC del momento en que se dio el consentimiento.
     """
 
     __tablename__ = "usuarios"
 
-    id       = Column(Integer, primary_key=True, index=True)
-    nombre   = Column(String,  nullable=False)
-    email    = Column(String,  unique=True, nullable=False, index=True)
-    password = Column(String,  nullable=False)
-    activo   = Column(Boolean, default=True)
+    id                  = Column(Integer,  primary_key=True, index=True)
+    nombre              = Column(String,   nullable=False)
+    email               = Column(String,   unique=True, nullable=False, index=True)
+    hashed_password     = Column(String,   nullable=False)
+    activo              = Column(Boolean,  default=True)
+    rol                 = Column(String,   nullable=False, default="customer")  # "admin" | "customer"
+    acepto_tratamiento  = Column(Boolean,  nullable=False, default=False)       # Ley 25.326, Art. 5
+    fecha_consentimiento = Column(DateTime, nullable=True)                       # UTC timestamp
 
     # Un usuario puede tener muchos pedidos
     pedidos = relationship("Pedido", back_populates="usuario")
