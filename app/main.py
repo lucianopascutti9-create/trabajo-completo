@@ -7,12 +7,13 @@ Ejecutar con:
     uvicorn app.main:app --reload
 """
 
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import Base, engine, get_db
+from app.database import Base, engine
 from app import models  # noqa: F401 — necesario para que Base registre los modelos
+from app.core.config import settings
+from app.routers import productos
 
 # ---------------------------------------------------------------------------
 # Creación de tablas en PostgreSQL al iniciar la aplicación.
@@ -28,95 +29,30 @@ Base.metadata.create_all(bind=engine)
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
-    title="Culto al Flan — API",
+    title=settings.PROJECT_NAME,
     description="API de productos de postres tradicionales — Actividad Clase 2",
-    version="2.0.0",
+    version="3.0.0",
 )
 
 
 # ---------------------------------------------------------------------------
-# Schema Pydantic — usado para validar entrada/salida de la API.
-# Es independiente del modelo ORM; permite controlar qué campos se exponen.
+# Configuración de CORS
 # ---------------------------------------------------------------------------
 
-class ProductoSchema(BaseModel):
-    """
-    Representa un producto de la tienda.
-
-    Campos obligatorios según la Ley 24.240 (deber de información):
-    - precio_final:    precio total que paga el consumidor (IVA incluido).
-    - cuotas_cantidad: cantidad de cuotas disponibles para financiamiento.
-    - cuotas_valor:    valor de cada cuota en pesos.
-    - garantia_meses:  período de garantía legal/comercial en meses.
-    """
-
-    id: int
-    nombre: str
-    precio_final: float
-    cuotas_cantidad: int
-    cuotas_valor: float
-    garantia_meses: int
-    stock: int
-
-    class Config:
-        # Permite que Pydantic lea atributos desde instancias ORM de SQLAlchemy
-        from_attributes = True
-
-
-class ProductoCreate(BaseModel):
-    """Schema para la creación de un producto (sin `id`, lo genera la DB)."""
-    nombre: str
-    precio_final: float
-    cuotas_cantidad: int
-    cuotas_valor: float
-    garantia_meses: int
-    stock: int
-
-
-# ---------------------------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------------------------
-
-@app.get(
-    "/productos",
-    response_model=list[ProductoSchema],
-    summary="Listar productos",
-    description="Devuelve la lista completa de productos disponibles en la tienda.",
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-def get_productos(db: Session = Depends(get_db)) -> list[ProductoSchema]:
-    """
-    Consulta todos los productos almacenados en PostgreSQL.
-    La sesión `db` es inyectada por FastAPI a través de Depends(get_db).
-    """
-    return db.query(models.Producto).all()
 
 
-@app.post(
-    "/productos",
-    response_model=ProductoSchema,
-    status_code=201,
-    summary="Agregar producto",
-    description="Recibe un objeto Producto, lo persiste en PostgreSQL y lo retorna.",
-)
-def create_producto(
-    producto: ProductoCreate,
-    db: Session = Depends(get_db),
-) -> ProductoSchema:
-    """
-    Persiste un nuevo producto en PostgreSQL.
+# ---------------------------------------------------------------------------
+# Routers
+# ---------------------------------------------------------------------------
 
-    Flujo:
-    1. Crea una instancia ORM a partir del schema Pydantic.
-    2. La agrega a la sesión (staged, no escrito aún).
-    3. Hace commit → escribe en la base de datos.
-    4. Refresca el objeto para obtener el `id` generado por la DB.
-    5. Lo retorna serializado como ProductoSchema.
-    """
-    db_producto = models.Producto(**producto.model_dump())
-    db.add(db_producto)
-    db.commit()
-    db.refresh(db_producto)
-    return db_producto
+app.include_router(productos.router)
 
 
 # ---------------------------------------------------------------------------
