@@ -126,9 +126,9 @@ flanes_data = [
 ]
 
 def seed():
-    # Drop and recreate productos table to ensure columns match
-    models.Producto.__table__.drop(bind=engine, checkfirst=True)
-    models.Producto.__table__.create(bind=engine, checkfirst=True)
+    # Drop and recreate all tables in proper order
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
     
     db = SessionLocal()
     for item in flanes_data:

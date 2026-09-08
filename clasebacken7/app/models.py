@@ -70,4 +70,4 @@ class ItemPedido(Base):
     precio_unit = Column(Float,  nullable=False)
 
     pedido   = relationship("Pedido",   back_populates="items")
-    producto = relationship("Producto", back_populates="producto")
+    producto = relationship("Producto", back_populates="items")
