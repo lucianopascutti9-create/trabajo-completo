@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { crearPedido } from '../services/api';
 
 export default function CartView({
   cartItems = [],
@@ -6,14 +7,17 @@ export default function CartView({
   onRemoveItem,
   onClearCart,
   onContinueShopping,
-  onSelectProduct
+  onSelectProduct,
+  onNavigateToHistory
 }) {
   const [shippingMethod, setShippingMethod] = useState('delivery'); // 'delivery' | 'pickup'
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState('');
-  const [orderModalOpen, setOrderModalOpen] = useState(false);
-  const [confirmedOrder, setConfirmedOrder] = useState(null);
+
+  // Estados de la Parte 2 (Confirmar compra)
+  const [enviando, setEnviando] = useState(false);
+  const [errorPedido, setErrorPedido] = useState(null);
 
   // Cálculos de montos
   const subtotal = cartItems.reduce((acc, item) => {
@@ -53,29 +57,32 @@ export default function CartView({
     setCouponError('');
   };
 
-  const handleCheckout = () => {
-    const orderData = {
-      orderId: `CULTO-${Math.floor(100000 + Math.random() * 900000)}`,
-      date: new Date().toLocaleDateString('es-AR', { dateStyle: 'long' }),
-      items: cartItems,
-      subtotal,
-      discountAmount,
-      deliveryCost,
-      total,
-      shippingMethod
-    };
-    setConfirmedOrder(orderData);
-    setOrderModalOpen(true);
-  };
+  // Parte 2 — 4. Escribir confirmar() con try/catch/finally y estado enviando
+  // 5. if (enviando) return;
+  const confirmar = async () => {
+    if (enviando) return;
+    if (cartItems.length === 0) return;
 
-  const handleFinishOrder = () => {
-    setOrderModalOpen(false);
-    onClearCart && onClearCart();
-    onContinueShopping && onContinueShopping();
+    setEnviando(true);
+    setErrorPedido(null);
+
+    try {
+      await crearPedido(cartItems);
+      // Éxito: vaciar carrito y navegar al historial (Parte 4 - Paso 5)
+      onClearCart && onClearCart();
+      if (onNavigateToHistory) {
+        onNavigateToHistory();
+      }
+    } catch (err) {
+      console.error('Error al confirmar pedido:', err);
+      setErrorPedido(err.message || 'Error al procesar la compra.');
+    } finally {
+      setEnviando(false);
+    }
   };
 
   // Carrito Vacío
-  if (cartItems.length === 0 && !confirmedOrder) {
+  if (cartItems.length === 0) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto animate-fadeIn">
         <div className="w-24 h-24 rounded-full bg-amber-100/80 flex items-center justify-center text-5xl mb-6 shadow-inner">
@@ -362,15 +369,41 @@ export default function CartView({
               </div>
             </div>
 
-            {/* Botón de Checkout Principal */}
+            {/* Mensaje de error de la API (por ejemplo 409 Falta de Stock o 401 Sesión vencida) */}
+            {errorPedido && (
+              <div className="p-4 bg-red-50 border-2 border-red-200 rounded-2xl text-xs text-red-700 font-medium flex items-start gap-2.5 animate-fadeIn">
+                <span className="text-base leading-none">⚠️</span>
+                <div className="flex-1">
+                  <strong className="block text-red-900 font-bold mb-0.5">Error al confirmar el pedido:</strong>
+                  {errorPedido}
+                </div>
+              </div>
+            )}
+
+            {/* Botón de Confirmación Principal (Parte 2 - Paso 4 y 5) */}
             <button
-              onClick={handleCheckout}
-              className="w-full py-4 px-6 rounded-2xl bg-amber-900 hover:bg-amber-950 text-white font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl active:scale-98 cursor-pointer"
+              id="btn-confirmar-pedido"
+              onClick={confirmar}
+              disabled={enviando || cartItems.length === 0}
+              className={`w-full py-4 px-6 rounded-2xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg ${
+                enviando || cartItems.length === 0
+                  ? 'bg-stone-300 text-stone-500 cursor-not-allowed shadow-none'
+                  : 'bg-amber-900 hover:bg-amber-950 text-white hover:shadow-xl active:scale-98 cursor-pointer'
+              }`}
             >
-              <span>Proceder al Pago Seguro</span>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
+              {enviando ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span>Confirmando...</span>
+                </>
+              ) : (
+                <>
+                  <span>Confirmar Compra</span>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </>
+              )}
             </button>
 
             {/* Badges de Seguridad */}
@@ -385,55 +418,6 @@ export default function CartView({
         </div>
 
       </div>
-
-      {/* === MODAL DE PEDIDO CONFIRMADO (SIMULACIÓN DE CHECKOUT) === */}
-      {orderModalOpen && confirmedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-amber-900/20 text-center space-y-5 animate-caramel-pulse">
-            
-            <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-3xl mx-auto shadow-inner">
-              ✓
-            </div>
-
-            <div>
-              <span className="text-xs uppercase font-bold tracking-widest text-amber-800">
-                ¡Pedido Recibido con Éxito!
-              </span>
-              <h3 className="font-serif text-2xl font-black text-amber-950 mt-1">
-                Gracias por unirte al Culto
-              </h3>
-              <p className="text-xs text-stone-500 mt-1">
-                Código de seguimiento: <strong className="text-amber-900">{confirmedOrder.orderId}</strong>
-              </p>
-            </div>
-
-            <div className="bg-amber-50/80 rounded-2xl p-4 text-xs text-stone-700 text-left space-y-2 border border-amber-200">
-              <div className="flex justify-between font-semibold text-amber-950 pb-1 border-b border-amber-200">
-                <span>Detalle del Pedido:</span>
-                <span>${confirmedOrder.total.toLocaleString('es-AR')}</span>
-              </div>
-              <ul className="space-y-1 text-stone-600">
-                {confirmedOrder.items.map((it, i) => (
-                  <li key={i} className="flex justify-between">
-                    <span>{it.cantidad}x {it.producto.nombre}</span>
-                    <span>${((it.producto.precio_final || it.producto.precio) * it.cantidad).toLocaleString('es-AR')}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-[11px] text-amber-900 pt-1">
-                🚚 Entrega: {confirmedOrder.shippingMethod === 'delivery' ? 'Despacho refrigerado express' : 'Retiro en Obrador Palermo'}
-              </p>
-            </div>
-
-            <button
-              onClick={handleFinishOrder}
-              className="w-full bg-amber-900 hover:bg-amber-950 text-white font-bold text-sm py-3.5 rounded-xl transition-all cursor-pointer shadow-md"
-            >
-              Volver a la Tienda
-            </button>
-          </div>
-        </div>
-      )}
 
     </div>
   );

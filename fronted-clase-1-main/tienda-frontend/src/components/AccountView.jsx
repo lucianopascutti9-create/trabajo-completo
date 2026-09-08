@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { loginUsuario, getUsuarioActual } from '../services/api';
 
 export default function AccountView({ 
   user, 
   onLogin, 
   onLogout, 
   onRegister,
-  onExploreCatalog 
+  onExploreCatalog,
+  onViewOrders
 }) {
   const [activeTab, setActiveTab] = useState('login'); // 'login' | 'register'
   
@@ -14,6 +16,7 @@ export default function AccountView({
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Register form state
   const [regName, setRegName] = useState('');
@@ -29,7 +32,7 @@ export default function AccountView({
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setLoginError('');
 
@@ -38,22 +41,51 @@ export default function AccountView({
       return;
     }
 
-    // Login exitoso
-    onLogin({
-      nombre: loginEmail.split('@')[0].replace('.', ' ').toUpperCase(),
-      email: loginEmail,
-      es_admin: false,
-      memberSince: '2025'
-    });
+    setIsSubmitting(true);
+    try {
+      await loginUsuario(loginEmail, loginPassword);
+      const me = await getUsuarioActual();
+      onLogin({
+        id: me.id,
+        nombre: me.nombre,
+        email: me.email,
+        rol: me.rol,
+        es_admin: me.rol === 'admin',
+        memberSince: '2025'
+      });
+    } catch (err) {
+      setLoginError(err.message || 'Error al iniciar sesión con el backend.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleQuickDemoLogin = () => {
-    onLogin({
-      nombre: 'Luciano Pascutti',
-      email: 'luciano@cultoalflan.com',
-      es_admin: true,
-      memberSince: '2024'
-    });
+  const handleQuickDemoLogin = async () => {
+    setIsSubmitting(true);
+    setLoginError('');
+    try {
+      await loginUsuario('luciano@test.com', 'Password123!');
+      const me = await getUsuarioActual();
+      onLogin({
+        id: me.id,
+        nombre: me.nombre,
+        email: me.email,
+        rol: me.rol,
+        es_admin: me.rol === 'admin',
+        memberSince: '2025'
+      });
+    } catch (err) {
+      // Fallback
+      onLogin({
+        id: 3,
+        nombre: 'Luciano Pascutti',
+        email: 'luciano@test.com',
+        es_admin: false,
+        memberSince: '2025'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleRegisterSubmit = (e) => {
@@ -159,9 +191,18 @@ export default function AccountView({
               </div>
             </div>
 
+            {onViewOrders && (
+              <button
+                onClick={onViewOrders}
+                className="w-full mt-3 py-3 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center gap-2"
+              >
+                <span>📦 Ver Mi Historial de Pedidos Real</span>
+              </button>
+            )}
+
             <button
               onClick={onExploreCatalog}
-              className="w-full mt-3 py-3 rounded-xl bg-amber-900 hover:bg-amber-950 text-white text-xs font-bold transition-all cursor-pointer text-center"
+              className="w-full mt-2 py-3 rounded-xl bg-amber-900 hover:bg-amber-950 text-white text-xs font-bold transition-all cursor-pointer text-center"
             >
               Hacer un nuevo pedido de flanes →
             </button>

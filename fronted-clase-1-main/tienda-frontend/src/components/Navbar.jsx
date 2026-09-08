@@ -82,6 +82,19 @@ export default function Navbar({
               )}
             </button>
 
+            {user && (
+              <button
+                onClick={() => setCurrentView('mis-pedidos')}
+                className={`px-5 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  currentView === 'mis-pedidos'
+                    ? 'bg-amber-900 text-white shadow-sm'
+                    : 'text-amber-950/80 hover:text-amber-900 hover:bg-amber-900/10'
+                }`}
+              >
+                <span>📦 Mis Pedidos</span>
+              </button>
+            )}
+
             <button
               onClick={() => setCurrentView('cuenta')}
               className={`px-5 py-2 rounded-full text-sm font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -185,6 +198,18 @@ export default function Navbar({
               {cartCount}
             </span>
           </button>
+
+          {user && (
+            <button
+              onClick={() => { setCurrentView('mis-pedidos'); setMobileMenuOpen(false); }}
+              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-between ${
+                currentView === 'mis-pedidos' ? 'bg-amber-900 text-white' : 'text-amber-950 hover:bg-amber-100'
+              }`}
+            >
+              <span>📦 Mis Pedidos (Historial)</span>
+              <span className="text-xs opacity-75">Ver compras</span>
+            </button>
+          )}
 
           <button
             onClick={() => { setCurrentView('cuenta'); setMobileMenuOpen(false); }}
