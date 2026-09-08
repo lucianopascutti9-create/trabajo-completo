@@ -84,7 +84,7 @@ def get_current_user(
             algorithms=[settings.ALGORITHM],
         )
         email: str | None = payload.get("sub")
-        tipo: str | None = payload.get("type")
+        tipo: str | None = payload.get("tipo") or payload.get("type")
 
         # Rechazar refresh tokens usados como access tokens
         if email is None or tipo != "access":

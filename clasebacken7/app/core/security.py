@@ -37,6 +37,7 @@ def crear_token(email: str, rol: str, minutos: int, tipo: str) -> str:
     payload = {
         "sub": email,
         "rol": rol,
+        "tipo": tipo,
         "type": tipo,
         "exp": expire,
     }
