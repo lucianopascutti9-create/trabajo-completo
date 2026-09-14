@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost/ecommerce_db"
     CORS_ORIGINS: str = "http://localhost,http://localhost:3000,http://localhost:5173"
 
+    # JWT
+    SECRET_KEY: str = "cambia-esta-clave-en-produccion"
+    ALGORITHM: str = "HS256"
+    ACCESS_MIN: int = 30        # minutos de vida del access token
+    REFRESH_MIN: int = 10080    # minutos de vida del refresh token (7 días)
+
     @property
     def origins(self) -> list[str]:
         """
