@@ -46,18 +46,22 @@ class Usuario(Base):
     fecha_consentimiento = Column(DateTime, nullable=True)
 
     pedidos = relationship("Pedido", back_populates="usuario")
+    solicitudes_revocacion = relationship("SolicitudRevocacion", back_populates="usuario")
 
 
 class Pedido(Base):
     __tablename__ = "pedidos"
 
-    id         = Column(Integer, primary_key=True, index=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
-    total      = Column(Float,  default=0.0)
-    estado     = Column(String, default="pendiente")
+    id                = Column(Integer, primary_key=True, index=True)
+    usuario_id        = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    total             = Column(Float,  default=0.0)
+    estado            = Column(String, default="pendiente")
+    creado_en         = Column(DateTime, nullable=True)
+    codigo_revocacion = Column(String, nullable=True)
 
-    usuario = relationship("Usuario",    back_populates="pedidos")
-    items   = relationship("ItemPedido", back_populates="pedido", cascade="all, delete-orphan")
+    usuario              = relationship("Usuario",    back_populates="pedidos")
+    items                = relationship("ItemPedido", back_populates="pedido", cascade="all, delete-orphan")
+    solicitud_revocacion = relationship("SolicitudRevocacion", back_populates="pedido", uselist=False)
 
 
 class ItemPedido(Base):
@@ -71,3 +75,18 @@ class ItemPedido(Base):
 
     pedido   = relationship("Pedido",   back_populates="items")
     producto = relationship("Producto", back_populates="items")
+
+
+class SolicitudRevocacion(Base):
+    __tablename__ = "solicitudes_revocacion"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    codigo     = Column(String, unique=True, index=True, nullable=False)
+    pedido_id  = Column(Integer, ForeignKey("pedidos.id"), nullable=False)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    fecha      = Column(DateTime, nullable=False)
+    motivo     = Column(String, nullable=True, default="Arrepentimiento de compra (Art. 34 Ley 24.240)")
+
+    pedido  = relationship("Pedido", back_populates="solicitud_revocacion")
+    usuario = relationship("Usuario", back_populates="solicitudes_revocacion")
+

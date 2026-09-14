@@ -54,6 +54,18 @@ export default function Footer({ onNavigate }) {
                   👤 Mi Cuenta / Registro
                 </button>
               </li>
+              <li>
+                <a
+                  href="/mis-datos"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigate('mis-datos');
+                  }}
+                  className="hover:text-amber-300 transition-colors cursor-pointer block"
+                >
+                  🛡️ Mis Datos Personales
+                </a>
+              </li>
             </ul>
           </div>
 
@@ -69,6 +81,21 @@ export default function Footer({ onNavigate }) {
             <div className="p-3 bg-amber-950/80 rounded-2xl border border-amber-500/20 text-[11px] text-amber-300">
               ❄️ <strong>Compromiso Térmico:</strong> Todos nuestros envíos viajan en vehículos refrigerados para preservar la cremosidad y temperatura ideal de consumo (4°C a 7°C).
             </div>
+            {/* Banner Legal Disposición 954/2025 */}
+            <div className="pt-2">
+              <a
+                href="/arrepentimiento"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onNavigate('arrepentimiento');
+                }}
+                id="boton-arrepentimiento-destacado"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 text-xs font-bold transition-all shadow hover:shadow-amber-900/20"
+              >
+                <span>↩️</span>
+                <span>Botón de arrepentimiento</span>
+              </a>
+            </div>
           </div>
 
         </div>
@@ -76,6 +103,29 @@ export default function Footer({ onNavigate }) {
         {/* Footer Bottom */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-amber-300/50">
           <p>© {new Date().getFullYear()} Culto al Flan. Todos los derechos reservados.</p>
+          <div className="flex items-center gap-4">
+            <a
+              href="/arrepentimiento"
+              onClick={(e) => {
+                e.preventDefault();
+                onNavigate('arrepentimiento');
+              }}
+              className="text-amber-300/80 underline hover:text-amber-200 font-semibold"
+            >
+              Botón de arrepentimiento
+            </a>
+            <span>•</span>
+            <a
+              href="/mis-datos"
+              onClick={(e) => {
+                e.preventDefault();
+                onNavigate('mis-datos');
+              }}
+              className="text-amber-300/80 hover:text-amber-200"
+            >
+              Mis datos
+            </a>
+          </div>
           <p className="flex items-center gap-1">
             Hecho con amor por el buen flan casero ❤️🍮
           </p>
@@ -85,3 +135,4 @@ export default function Footer({ onNavigate }) {
     </footer>
   );
 }
+

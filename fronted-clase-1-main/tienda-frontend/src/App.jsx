@@ -5,6 +5,8 @@ import ProductDetailView from './components/ProductDetailView';
 import CartView from './components/CartView';
 import AccountView from './components/AccountView';
 import MisPedidos from './components/MisPedidos';
+import Arrepentimiento from './components/Arrepentimiento';
+import MisDatos from './components/MisDatos';
 import RutaProtegida from './components/RutaProtegida';
 import Footer from './components/Footer';
 import Toast from './components/Toast';
@@ -13,7 +15,7 @@ import { getProductos, getUsuarioActual } from './services/api';
 import { CarritoProvider, useCarrito } from './context/CarritoContext';
 
 function AppContent() {
-  // Estado de navegación: 'catalogo' | 'detalle' | 'carrito' | 'cuenta' | 'mis-pedidos'
+  // Estado de navegación: 'catalogo' | 'detalle' | 'carrito' | 'cuenta' | 'mis-pedidos' | 'arrepentimiento' | 'mis-datos'
   const [currentView, setCurrentView] = useState('catalogo');
   
   // Hook useCarrito (Parte 1 - Pasos 1 a 5)
@@ -29,11 +31,25 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [limit] = useState(6);
 
-  // Sincronizar estado con la URL para el historial del navegador
+  // Sincronizar estado con la URL para el historial del navegador (Pathname y SearchParams)
   useEffect(() => {
     const handlePopState = () => {
+      const pathname = window.location.pathname.replace(/^\/+|\/+$/g, '');
       const params = new URLSearchParams(window.location.search);
-      setCurrentView(params.get('view') || 'catalogo');
+      const viewParam = params.get('view');
+
+      if (pathname === 'arrepentimiento' || viewParam === 'arrepentimiento') {
+        setCurrentView('arrepentimiento');
+      } else if (pathname === 'mis-datos' || viewParam === 'mis-datos') {
+        setCurrentView('mis-datos');
+      } else if (viewParam) {
+        setCurrentView(viewParam);
+      } else if (pathname && ['catalogo', 'detalle', 'carrito', 'cuenta', 'mis-pedidos'].includes(pathname)) {
+        setCurrentView(pathname);
+      } else {
+        setCurrentView('catalogo');
+      }
+
       setPage(parseInt(params.get('page') || '0', 10));
       setSearchQuery(params.get('q') || '');
     };
@@ -47,21 +63,31 @@ function AppContent() {
   // Actualizar URL cuando el estado cambie
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const currentViewParam = params.get('view') || 'catalogo';
     const currentPageParam = parseInt(params.get('page') || '0', 10);
     const currentQParam = params.get('q') || '';
 
-    if (currentView !== currentViewParam || page !== currentPageParam || searchQuery !== currentQParam) {
-      const newParams = new URLSearchParams();
-      if (currentView !== 'catalogo') newParams.set('view', currentView);
-      if (page > 0) newParams.set('page', page);
-      if (searchQuery) newParams.set('q', searchQuery);
-      
-      const qs = newParams.toString();
-      const newUrl = window.location.pathname + (qs ? '?' + qs : '');
+    let targetPath = '/';
+    const newParams = new URLSearchParams();
+
+    if (currentView === 'arrepentimiento') {
+      targetPath = '/arrepentimiento';
+    } else if (currentView === 'mis-datos') {
+      targetPath = '/mis-datos';
+    } else if (currentView !== 'catalogo') {
+      newParams.set('view', currentView);
+    }
+
+    if (page > 0) newParams.set('page', page);
+    if (searchQuery) newParams.set('q', searchQuery);
+
+    const qs = newParams.toString();
+    const newUrl = targetPath + (qs ? '?' + qs : '');
+    
+    if (window.location.pathname + window.location.search !== newUrl) {
       window.history.pushState({}, '', newUrl);
     }
   }, [currentView, page, searchQuery]);
+
 
   // Producto actualmente seleccionado en la Ficha de Detalle
   const [selectedProduct, setSelectedProduct] = useState(FLANES_DATA[0]);
@@ -241,6 +267,30 @@ function AppContent() {
             onExploreCatalog={() => navigateTo('catalogo')}
             onViewOrders={() => navigateTo('mis-pedidos')}
           />
+        )}
+
+        {/* PANTALLA 6: BOTÓN DE ARREPENTIMIENTO (FUERA DE RUTA PROTEGIDA - LEY 24.240 Y DISP. 954/2025) */}
+        {currentView === 'arrepentimiento' && (
+          <Arrepentimiento
+            user={user}
+            onGoToLogin={() => navigateTo('cuenta')}
+            onGoToHistory={() => navigateTo('mis-pedidos')}
+            onGoToCatalog={() => navigateTo('catalogo')}
+          />
+        )}
+
+        {/* PANTALLA 7: MIS DATOS PERSONALES (RUTA PROTEGIDA - LEY 25.326) */}
+        {currentView === 'mis-datos' && (
+          <RutaProtegida user={user} onGoToLogin={() => navigateTo('cuenta')}>
+            <MisDatos
+              user={user}
+              onLogout={handleLogout}
+              onClearCart={vaciar}
+              onNavigate={navigateTo}
+              showToast={showToast}
+              onGoToLogin={() => navigateTo('cuenta')}
+            />
+          </RutaProtegida>
         )}
       </main>
 

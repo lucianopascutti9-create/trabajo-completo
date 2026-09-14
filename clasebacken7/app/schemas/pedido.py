@@ -3,6 +3,7 @@ app/schemas/pedido.py
 Schemas Pydantic para el flujo de compras y pedidos.
 """
 
+from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import List, Optional
 
@@ -31,6 +32,9 @@ class PedidoOut(BaseModel):
     usuario_id: int
     total: float
     estado: str
+    creado_en: Optional[datetime] = None
+    codigo_revocacion: Optional[str] = None
     items: List[ItemPedidoOut] = []
 
     model_config = {"from_attributes": True}
+

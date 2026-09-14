@@ -121,3 +121,96 @@ export async function getUsuarioActual() {
   if (!response.ok) throw new Error('No autenticado');
   return response.json();
 }
+
+// Parte 2 — Arrepentimiento / Revocar compra (Disposición 954/2025 y Ley 24.240)
+export async function revocarPedido(pedidoId) {
+  const response = await fetch(`${BASE_URL}/pedidos/${pedidoId}/revocar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+    },
+  });
+
+  if (response.status === 201) {
+    return response.json();
+  }
+
+  let errorData = null;
+  try {
+    errorData = await response.json();
+  } catch (e) {
+    // Si no es JSON válido
+  }
+
+  if (response.status === 404) {
+    throw new Error(errorData?.detail || `Pedido #${pedidoId} no encontrado.`);
+  }
+
+  if (response.status === 409) {
+    // Mostrá el detail tal como viene del backend
+    throw new Error(errorData?.detail || 'Conflicto al intentar revocar el pedido.');
+  }
+
+  if (response.status === 401) {
+    throw new Error('Tu sesión ha vencido o no has iniciado sesión.');
+  }
+
+  throw new Error(errorData?.detail || `Error al procesar la solicitud de revocación (Código ${response.status}).`);
+}
+
+// Parte 3 — Mis datos personales (Ley 25.326)
+export async function getMisDatos() {
+  const response = await fetch(`${BASE_URL}/usuarios/me`, {
+    method: 'GET',
+    headers: {
+      ...authHeaders(),
+    },
+  });
+
+  return manejarRespuesta(response);
+}
+
+// Descarga segura con fetch, blob y URL efímera
+export async function descargarMisDatosBlob() {
+  const response = await fetch(`${BASE_URL}/usuarios/me/exportar`, {
+    method: 'GET',
+    headers: {
+      ...authHeaders(),
+    },
+  });
+
+  if (!response.ok) {
+    let errorDetail = '';
+    try {
+      const err = await response.json();
+      errorDetail = err.detail;
+    } catch {}
+    throw new Error(errorDetail || `Error al exportar datos personales (${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mis-datos-culto-al-flan.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+// Parte 4 — Darse de baja / Supresión de datos personales
+export async function eliminarMiCuenta() {
+  const response = await fetch(`${BASE_URL}/usuarios/me`, {
+    method: 'DELETE',
+    headers: {
+      ...authHeaders(),
+    },
+  });
+
+  return manejarRespuesta(response);
+}
+
+export { BASE_URL };
+
