@@ -99,10 +99,13 @@ def get_current_user(
     if usuario is None:
         raise credentials_exception
 
+    # Ley 25.326 — cuentas anonimizadas/dadas de baja no pueden operar.
+    # El enunciado de la cátedra exige HTTP 401 para activo == False.
     if not usuario.activo:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Cuenta desactivada. Contactá al administrador.",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Cuenta desactivada. Tus datos fueron eliminados del sistema.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return usuario

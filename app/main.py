@@ -15,6 +15,8 @@ from app import models  # noqa: F401 — necesario para que Base registre los mo
 from app.core.config import settings
 from app.routers import productos
 from app.routers import auth
+from app.routers import pedidos
+from app.routers import usuarios
 
 # ---------------------------------------------------------------------------
 # Creación de tablas en PostgreSQL al iniciar la aplicación.
@@ -55,6 +57,8 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(productos.router)
+app.include_router(pedidos.router)    # POST /pedidos/{id}/revocacion (Ley 24.240 / Disp. 954/2025)
+app.include_router(usuarios.router)   # GET|DELETE /usuarios/me/...  (Ley 25.326)
 
 
 # ---------------------------------------------------------------------------
