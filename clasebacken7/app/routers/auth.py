@@ -13,7 +13,7 @@ from typing import Optional
 from app import models
 from app.core.security import crear_token, hash_password, verificar_password
 from app.core.config import settings
-from app.dependencies import get_db, get_current_user, oauth2_scheme
+from app.dependencies import get_db, get_current_user
 from app.schemas.usuario import Token, UsuarioCreate, UsuarioOut, RefreshTokenRequest
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])

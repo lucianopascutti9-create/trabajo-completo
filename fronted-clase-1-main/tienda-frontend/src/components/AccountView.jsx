@@ -74,7 +74,7 @@ export default function AccountView({
         es_admin: me.rol === 'admin',
         memberSince: '2025'
       });
-    } catch (err) {
+    } catch {
       // Fallback
       onLogin({
         id: 3,
@@ -355,9 +355,10 @@ export default function AccountView({
 
               <button
                 type="submit"
-                className="w-full py-3.5 px-4 rounded-xl bg-amber-900 hover:bg-amber-950 text-white font-bold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg cursor-pointer"
+                disabled={isSubmitting}
+                className="w-full py-3.5 px-4 rounded-xl bg-amber-900 hover:bg-amber-950 disabled:opacity-50 text-white font-bold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg cursor-pointer"
               >
-                Iniciar Sesión
+                {isSubmitting ? 'Iniciando sesión...' : 'Iniciar Sesión'}
               </button>
 
               {/* Divisor */}

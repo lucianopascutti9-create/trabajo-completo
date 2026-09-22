@@ -62,10 +62,6 @@ function AppContent() {
 
   // Actualizar URL cuando el estado cambie
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const currentPageParam = parseInt(params.get('page') || '0', 10);
-    const currentQParam = params.get('q') || '';
-
     let targetPath = '/';
     const newParams = new URLSearchParams();
 
@@ -144,11 +140,13 @@ function AppContent() {
         } else {
           setProductos(page === 0 ? FLANES_DATA : []);
         }
+        setApiError(null);
         setIsLoading(false);
       })
       .catch((err) => {
         console.info('Usando catálogo local enriquecido de Culto al Flan:', err.message);
         setProductos(FLANES_DATA);
+        setApiError(err.message);
         setIsLoading(false);
       });
   }, [page, limit, searchQuery]);

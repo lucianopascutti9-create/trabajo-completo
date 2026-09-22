@@ -5,7 +5,7 @@ y gestión de cuenta de usuario.
 """
 
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, status, Response
 from sqlalchemy.orm import Session
 import json
 

@@ -68,8 +68,9 @@ export default function CartView({
 
     try {
       await crearPedido(cartItems);
-      // Éxito: vaciar carrito y navegar al historial (Parte 4 - Paso 5)
-      onClearCart && onClearCart();
+      if (onClearCart) {
+        onClearCart();
+      }
       if (onNavigateToHistory) {
         onNavigateToHistory();
       }

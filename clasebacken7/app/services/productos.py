@@ -7,7 +7,7 @@ manteniendo los endpoints de main.py delgados y fácilmente testeables.
 
 from sqlalchemy.orm import Session
 from app import models
-from app.schemas import ProductoCreate, ProductoOut
+from app.schemas import ProductoCreate
 
 
 def crear_producto(db: Session, producto: ProductoCreate) -> models.Producto:

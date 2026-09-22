@@ -55,6 +55,8 @@ export default function ProductDetailView({
     stock_disponible = 10
   } = producto;
 
+  const cuotasCant = cuotas_cantidad || 3;
+  const cuotasVal = cuotas_valor ? Math.round(cuotas_valor) : Math.round(precioFinalCalculado / cuotasCant);
   const precioFinalCalculado = precio_final ?? precio ?? 0;
   const ahorro = precio_anterior ? precio_anterior - precioFinalCalculado : 0;
   const galeria = imagenes_galeria && imagenes_galeria.length > 0 ? imagenes_galeria : [imagen];
@@ -253,11 +255,11 @@ export default function ProductDetailView({
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-950">3 Cuotas Sin Interés</span>
+                    <span className="text-xs font-bold text-amber-950">{cuotasCant} Cuotas Sin Interés</span>
                     <span className="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full">0% TNA</span>
                   </div>
                   <p className="font-serif font-black text-base text-amber-900 mt-1">
-                    3x ${(precioFinalCalculado / 3).toFixed(0).toLocaleString('es-AR')}
+                    {cuotasCant}x ${cuotasVal.toLocaleString('es-AR')}
                   </p>
                   <span className="text-[11px] text-stone-500">Con Visa, Mastercard y Amex</span>
                 </div>

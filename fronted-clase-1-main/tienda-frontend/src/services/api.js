@@ -18,7 +18,7 @@ export async function manejarRespuesta(res) {
   let errorData = null;
   try {
     errorData = await res.json();
-  } catch (e) {
+  } catch {
     // Si no es json válido, queda en null
   }
 
@@ -139,7 +139,7 @@ export async function revocarPedido(pedidoId) {
   let errorData = null;
   try {
     errorData = await response.json();
-  } catch (e) {
+  } catch {
     // Si no es JSON válido
   }
 
