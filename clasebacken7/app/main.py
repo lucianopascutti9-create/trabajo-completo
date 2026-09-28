@@ -7,7 +7,9 @@ Ejecutar con:
     uvicorn app.main:app --reload
 """
 
+import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine
@@ -59,6 +61,12 @@ app.include_router(auth.router)
 app.include_router(productos.router)
 app.include_router(pedidos.router)
 app.include_router(usuarios.router)
+
+# Montar directorio estático para servir imágenes según el contrato DSI2 (/static/productos/...)
+static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+os.makedirs(os.path.join(static_dir, "productos"), exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 
 
 # ---------------------------------------------------------------------------

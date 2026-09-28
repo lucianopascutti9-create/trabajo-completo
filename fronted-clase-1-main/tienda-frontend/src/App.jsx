@@ -10,6 +10,7 @@ import MisDatos from './components/MisDatos';
 import RutaProtegida from './components/RutaProtegida';
 import Footer from './components/Footer';
 import Toast from './components/Toast';
+import SubirImagenModal from './components/SubirImagenModal';
 import { FLANES_DATA } from './data/flanes';
 import { getProductos, getUsuarioActual } from './services/api';
 import { CarritoProvider, useCarrito } from './context/CarritoContext';
@@ -117,6 +118,22 @@ function AppContent() {
   // Notificación Toast
   const [toast, setToast] = useState(null);
 
+  // Modal para Subir/Cambiar Imagen de Producto (Contrato DSI2)
+  const [uploadModalProduct, setUploadModalProduct] = useState(null);
+
+  const handleOpenUploadModal = (prod) => {
+    setUploadModalProduct(prod);
+  };
+
+  const handleProductUpdated = (updatedProd) => {
+    setProductos((prev) =>
+      prev.map((p) => (p.id === updatedProd.id ? { ...p, ...updatedProd } : p))
+    );
+    setSelectedProduct((prev) =>
+      prev && prev.id === updatedProd.id ? { ...prev, ...updatedProd } : prev
+    );
+  };
+
   // Cargar productos desde la API de backend, con fallback a FLANES_DATA
   useEffect(() => {
     setIsLoading(true);
@@ -129,8 +146,7 @@ function AppContent() {
               ...fallback,
               ...item,
               precio_final: item.precio_final || item.precio || fallback.precio_final,
-              imagen: fallback.imagen,
-              imagenes_galeria: fallback.imagenes_galeria,
+              imagen_url: item.imagen_url || null,
             };
           });
           setProductos(merged);
@@ -217,6 +233,8 @@ function AppContent() {
             setPage={setPage}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
+            user={user}
+            onOpenUploadModal={handleOpenUploadModal}
           />
         )}
 
@@ -229,6 +247,8 @@ function AppContent() {
             onAddToCart={handleAddToCart}
             onBuyNow={() => navigateTo('carrito')}
             onSelectOtherProduct={handleSelectProduct}
+            user={user}
+            onOpenUploadModal={handleOpenUploadModal}
           />
         )}
 

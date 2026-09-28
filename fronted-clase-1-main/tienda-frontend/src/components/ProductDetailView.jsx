@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { urlImagen } from '../utils/imagenes';
 
 export default function ProductDetailView({ 
   producto, 
@@ -6,7 +7,9 @@ export default function ProductDetailView({
   onAddToCart,
   onBuyNow,
   allProducts = [],
-  onSelectOtherProduct
+  onSelectOtherProduct,
+  user,
+  onOpenUploadModal
 }) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [cantidad, setCantidad] = useState(1);
@@ -125,13 +128,21 @@ export default function ProductDetailView({
         {/* === COLUMNA IZQUIERDA: GALERÍA DE FOTOS (5 COLUMNAS) === */}
         <div className="lg:col-span-6 space-y-4">
           
-          {/* Foto Principal con Badges */}
+          {/* Foto Principal con Badges y Marcador de Posición */}
           <div className="relative rounded-3xl overflow-hidden bg-amber-50 border border-amber-900/10 shadow-lg aspect-4/3 sm:aspect-square flex items-center justify-center">
-            <img
-              src={galeria[selectedImage] || imagen}
-              alt={nombre}
-              className="w-full h-full object-cover transition-all duration-500 hover:scale-105"
-            />
+            {urlImagen(producto) || galeria[selectedImage] || imagen ? (
+              <img
+                src={urlImagen(producto) || galeria[selectedImage] || imagen}
+                alt={nombre}
+                className="w-full h-full object-cover transition-all duration-500 hover:scale-105"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-100/70 via-stone-100 to-amber-200/50 text-amber-900/60 p-8 text-center select-none">
+                <span className="text-7xl mb-3 drop-shadow-xs">🍮</span>
+                <span className="text-sm font-bold text-amber-950/70 tracking-wide uppercase">Sin imagen oficial</span>
+                <span className="text-xs text-stone-500 mt-1">Marcador de posición</span>
+              </div>
+            )}
             
             {/* Badges Flotantes */}
             <div className="absolute top-4 left-4 flex flex-col gap-2">
@@ -144,6 +155,18 @@ export default function ProductDetailView({
                 ✓ En Stock para Despacho Hoy
               </span>
             </div>
+
+            {/* Botón de Subida / Cambio de Foto para Admin */}
+            {onOpenUploadModal && (
+              <button
+                onClick={() => onOpenUploadModal(producto)}
+                className="absolute top-4 right-4 bg-amber-900/90 hover:bg-amber-950 text-amber-200 px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg border border-amber-400/40 backdrop-blur-md flex items-center gap-1.5 cursor-pointer transition-transform hover:scale-105"
+                title="Subir o cambiar foto del producto"
+              >
+                <span>📷</span>
+                <span>Subir Foto</span>
+              </button>
+            )}
 
             {/* Badge de porciones */}
             <div className="absolute bottom-4 left-4">

@@ -23,6 +23,7 @@ class ProductoCreate(BaseModel):
     reviews_count: Optional[int] = 0
     porciones: Optional[str] = None
     imagen: Optional[str] = None
+    imagen_url: Optional[str] = None
     en_stock: Optional[bool] = True
     categoria_id: Optional[int] = None
 

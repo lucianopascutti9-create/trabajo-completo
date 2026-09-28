@@ -27,6 +27,7 @@ class Producto(Base):
     reviews_count   = Column(Integer, nullable=True, default=0)
     porciones       = Column(String,  nullable=True)
     imagen          = Column(String,  nullable=True)
+    imagen_url      = Column(String,  nullable=True)
     en_stock        = Column(Boolean, nullable=True, default=True)
     categoria_id    = Column(Integer, nullable=True)
 

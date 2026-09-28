@@ -1,0 +1,1 @@
+Este es un documento de texto plano para probar que el sistema rechaza archivos que no son imagenes.

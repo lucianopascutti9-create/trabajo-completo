@@ -11,7 +11,9 @@ export default function CatalogView({
   page,
   setPage,
   searchQuery,
-  setSearchQuery
+  setSearchQuery,
+  user,
+  onOpenUploadModal
 }) {
   const [selectedCategory, setSelectedCategory] = useState('todos');
   const [sortBy, setSortBy] = useState('destacados');
@@ -264,6 +266,8 @@ export default function CatalogView({
                 producto={producto}
                 onSelectProduct={onSelectProduct}
                 onAddToCart={onAddToCart}
+                user={user}
+                onOpenUploadModal={onOpenUploadModal}
               />
             ))}
           </div>

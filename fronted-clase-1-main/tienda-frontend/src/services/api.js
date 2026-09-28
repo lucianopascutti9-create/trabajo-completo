@@ -209,7 +209,45 @@ export async function eliminarMiCuenta() {
     },
   });
 
-  return manejarRespuesta(response);
+// Actividad Subida de Imágenes — Contrato DSI2
+export async function subirImagen(productoId, archivo) {
+  const fd = new FormData();
+  fd.append('archivo', archivo);
+
+  // NOTA: NO incluir Content-Type en los headers. El navegador lo genera
+  // automáticamente junto con el multipart boundary correspondiente.
+  const response = await fetch(`${BASE_URL}/productos/${productoId}/imagen`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(), // SOLO el token de autorización, NADA más
+    },
+    body: fd,
+  });
+
+  if (response.ok) {
+    return response.json();
+  }
+
+  let errorData = null;
+  try {
+    errorData = await response.json();
+  } catch {}
+
+  // Traducción estricta de códigos según la consigna:
+  if (response.status === 403) {
+    throw new Error('No tienes permisos de administrador para realizar esta acción (403).');
+  }
+  if (response.status === 404) {
+    throw new Error('El producto especificado no existe (404).');
+  }
+  if (response.status === 413) {
+    throw new Error('La imagen seleccionada supera el límite máximo de 2 MB (413).');
+  }
+  if (response.status === 415) {
+    throw new Error('El archivo no es una imagen válida (415). Formatos permitidos: JPG, PNG, WEBP.');
+  }
+
+  throw new Error(errorData?.detail || `Error al subir la imagen (Código ${response.status}).`);
 }
 
 export { BASE_URL };

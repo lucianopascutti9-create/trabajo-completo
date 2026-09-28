@@ -3,7 +3,9 @@ app/routers/productos.py
 Endpoints de productos — montados en app/main.py con prefix="/productos".
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import os
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, Query, status, File, UploadFile
 from sqlalchemy.orm import Session
 
 from app import models
@@ -12,6 +14,59 @@ from app.schemas.producto import ProductoCreate, ProductoOut
 from app.services.productos import crear_producto, listar_productos
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
+
+MAX_FILE_SIZE = 2 * 1024 * 1024  # 2 MB
+STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "static", "productos")
+
+
+@router.post(
+    "/{producto_id}/imagen",
+    response_model=ProductoOut,
+    summary="Subir imagen de producto",
+)
+async def post_imagen_producto(
+    producto_id: int,
+    archivo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _admin: models.Usuario = Depends(require_admin),
+) -> ProductoOut:
+    db_producto = db.query(models.Producto).filter(models.Producto.id == producto_id).first()
+    if not db_producto:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Producto con id={producto_id} no encontrado.",
+        )
+
+    # Validar formato: debe ser imagen (415)
+    content_type = archivo.content_type or ""
+    if not content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="El archivo seleccionado no es una imagen permitida.",
+        )
+
+    # Validar tamaño: no superar 2 MB (413)
+    contenido = await archivo.read()
+    if len(contenido) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="El archivo excede el tamaño máximo permitido de 2 MB.",
+        )
+
+    os.makedirs(STATIC_DIR, exist_ok=True)
+    ext = os.path.splitext(archivo.filename or "")[1].lower() or ".jpg"
+    filename = f"{producto_id}_{uuid.uuid4().hex[:8]}{ext}"
+    file_path = os.path.join(STATIC_DIR, filename)
+
+    with open(file_path, "wb") as f:
+        f.write(contenido)
+
+    # Ruta relativa según contrato DSI2
+    db_producto.imagen_url = f"/static/productos/{filename}"
+    db.commit()
+    db.refresh(db_producto)
+
+    return db_producto
 
 
 @router.get(
