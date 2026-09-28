@@ -33,6 +33,7 @@ class Producto(Base):
     cuotas_valor    = Column(Float,   nullable=False)
     garantia_meses  = Column(Integer, nullable=False)
     stock           = Column(Integer, nullable=False)
+    imagen_url      = Column(String,  nullable=True)   # ruta pública servida por StaticFiles
 
     # Relación inversa: permite ver en qué items aparece este producto
     items = relationship("ItemPedido", back_populates="producto")

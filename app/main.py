@@ -7,8 +7,11 @@ Ejecutar con:
     uvicorn app.main:app --reload
 """
 
+import pathlib
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, engine
 from app import models  # noqa: F401 — necesario para que Base registre los modelos
@@ -25,6 +28,13 @@ from app.routers import usuarios
 # Alembic en la próxima etapa).
 # ---------------------------------------------------------------------------
 Base.metadata.create_all(bind=engine)
+
+# ---------------------------------------------------------------------------
+# Directorio de archivos estáticos (imágenes subidas).
+# Se crea al arrancar para que StaticFiles no falle si aún está vacío.
+# ---------------------------------------------------------------------------
+pathlib.Path("uploads").mkdir(exist_ok=True)
+pathlib.Path("uploads/productos").mkdir(exist_ok=True)
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +69,13 @@ app.include_router(auth.router)
 app.include_router(productos.router)
 app.include_router(pedidos.router)    # POST /pedidos/{id}/revocacion (Ley 24.240 / Disp. 954/2025)
 app.include_router(usuarios.router)   # GET|DELETE /usuarios/me/...  (Ley 25.326)
+
+# ---------------------------------------------------------------------------
+# Archivos estáticos — imágenes de productos
+# Montado DESPUÉS de los routers para que no interfiera con ningún endpoint.
+# Las imágenes quedan accesibles en: GET /static/productos/<nombre>
+# ---------------------------------------------------------------------------
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
 
 
 # ---------------------------------------------------------------------------

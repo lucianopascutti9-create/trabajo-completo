@@ -36,5 +36,6 @@ class ProductoOut(ProductoCreate):
     """
 
     id: int
+    imagen_url: str | None = None  # None cuando el producto todavía no tiene imagen
 
     model_config = {"from_attributes": True}

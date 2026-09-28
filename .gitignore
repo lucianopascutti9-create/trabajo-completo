@@ -19,3 +19,6 @@ env/
 
 # Variables de entorno
 .env
+
+# Imágenes subidas por los administradores (archivos locales, no van al repo)
+uploads/

@@ -9,13 +9,17 @@ Control de acceso:
 - DELETE /productos/{id}→ requiere rol "admin" (require_admin).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import pathlib
+import secrets
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app import models
 from app.dependencies import get_db, require_admin
 from app.schemas import ProductoCreate, ProductoOut
 from app.services.productos import crear_producto, listar_productos
+from app.utils.archivos import parece_imagen
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
 
@@ -143,3 +147,90 @@ def delete_producto(
 
     db.delete(db_producto)
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Subida de imagen de producto
+# ---------------------------------------------------------------------------
+
+# Extensiones de imagen permitidas (en minúsculas)
+_EXTENSIONES_PERMITIDAS = {".jpg", ".jpeg", ".png", ".webp"}
+
+# Tamaño máximo: 2 MB
+_TAMANO_MAX_BYTES = 2 * 1024 * 1024
+
+
+@router.post(
+    "/{producto_id}/imagen",
+    response_model=ProductoOut,
+    summary="Subir imagen de producto",
+    description=(
+        "Sube una imagen (JPG, PNG o WEBP, máx 2 MB) para el producto indicado. "
+        "Valida extensión, tamaño y firma real de bytes. Requiere rol 'admin'."
+    ),
+)
+async def subir_imagen_producto(
+    producto_id: int,
+    archivo: UploadFile = File(..., description="Imagen del producto (JPG, PNG o WEBP, máx. 2 MB)"),
+    db: Session = Depends(get_db),
+    _admin: models.Usuario = Depends(require_admin),  # ← guard de autorización
+) -> ProductoOut:
+    """
+    Endpoint de subida segura de imagen para un producto.
+
+    Orden de validaciones (de la más barata a la más cara):
+      1. Extensión  → operación de string, O(k) sin I/O.
+      2. Tamaño     → requiere leer los bytes completos (await archivo.read()).
+      3. Firma real  → requiere tener los bytes en memoria (solo después de leer).
+
+    El nombre del archivo en disco se genera con secrets.token_hex; NO se usa
+    archivo.filename para evitar path traversal y directory injection.
+    """
+    # -- 0. Verificar que el producto exista -----------------------------------
+    db_producto = db.query(models.Producto).filter(
+        models.Producto.id == producto_id
+    ).first()
+
+    if not db_producto:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Producto con id={producto_id} no encontrado.",
+        )
+
+    # -- 1. Validar extensión (barata: solo strings, sin I/O) ------------------
+    ext = pathlib.Path(archivo.filename or "").suffix.lower()
+    if ext not in _EXTENSIONES_PERMITIDAS:
+        raise HTTPException(
+            status_code=415,
+            detail="Formato no permitido. Extensiones válidas: .jpg, .jpeg, .png, .webp",
+        )
+
+    # -- 2. Leer bytes y validar tamaño (una sola lectura) -------------------
+    contenido = await archivo.read()
+    if len(contenido) > _TAMANO_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="Máximo 2 MB.",
+        )
+
+    # -- 3. Validar firma real (magic bytes) ----------------------------------
+    if not parece_imagen(contenido):
+        raise HTTPException(
+            status_code=415,
+            detail="No es una imagen. El contenido del archivo no corresponde a JPG, PNG ni WEBP.",
+        )
+
+    # -- Guardado seguro en disco ---------------------------------------------
+    # Nombre generado internamente: nunca se usa archivo.filename para evitar
+    # path traversal (ej: "../../etc/passwd.jpg").
+    nombre = f"{producto_id}-{secrets.token_hex(8)}{ext}"
+    destino = pathlib.Path("uploads") / "productos"
+    destino.mkdir(parents=True, exist_ok=True)
+    (destino / nombre).write_bytes(contenido)
+
+    # Guardar la ruta pública en la base de datos
+    db_producto.imagen_url = f"/static/productos/{nombre}"
+    db.commit()
+    db.refresh(db_producto)
+
+    return db_producto
