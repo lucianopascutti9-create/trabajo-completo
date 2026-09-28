@@ -209,6 +209,9 @@ export async function eliminarMiCuenta() {
     },
   });
 
+  return manejarRespuesta(response);
+}
+
 // Actividad Subida de Imágenes — Contrato DSI2
 export async function subirImagen(productoId, archivo) {
   const fd = new FormData();
