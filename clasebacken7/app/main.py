@@ -8,11 +8,14 @@ Ejecutar con:
 """
 
 import os
-from fastapi import FastAPI
+from pathlib import Path
+from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from sqlalchemy import text
 
-from app.database import Base, engine
+from app.database import Base, engine, get_db
 from app import models  # noqa: F401 — necesario para que Base registre los modelos
 from app.core.config import settings
 from app.routers import productos
@@ -67,6 +70,23 @@ static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file
 os.makedirs(os.path.join(static_dir, "productos"), exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+# Crear carpeta de uploads para imágenes subidas en producción
+Path("uploads/productos").mkdir(parents=True, exist_ok=True)
+
+# Montar /demo → app/static/demo (imágenes de demo que van en el repositorio)
+_demo_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "demo")
+os.makedirs(_demo_dir, exist_ok=True)
+app.mount("/demo", StaticFiles(directory=_demo_dir), name="demo")
+
+
+# ---------------------------------------------------------------------------
+# Endpoint de salud — verifica que la aplicación y la base de datos responden
+# ---------------------------------------------------------------------------
+
+@app.get("/salud", tags=["Salud"])
+def salud(db: Session = Depends(get_db)):
+    db.execute(text("SELECT 1"))
+    return {"estado": "ok", "base": "ok"}
 
 
 # ---------------------------------------------------------------------------

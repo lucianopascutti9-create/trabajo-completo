@@ -32,3 +32,13 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 class Base(DeclarativeBase):
     pass
 
+
+# ---------------------------------------------------------------------------
+# get_db — generador de sesión para inyección de dependencias en FastAPI.
+# ---------------------------------------------------------------------------
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
