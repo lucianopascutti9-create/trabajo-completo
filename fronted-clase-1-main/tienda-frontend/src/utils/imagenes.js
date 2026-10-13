@@ -18,7 +18,7 @@ export function urlImagen(producto) {
     return rawUrl;
   }
 
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const baseUrl = import.meta.env.VITE_API_URL ?? '';
   const cleanBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   const cleanPath = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
 

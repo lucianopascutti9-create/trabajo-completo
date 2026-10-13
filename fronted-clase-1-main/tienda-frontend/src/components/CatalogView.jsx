@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import ProductCard from './ProductCard';
 import { CATEGORIAS_LIST } from '../data/flanes';
 
@@ -17,6 +17,18 @@ export default function CatalogView({
 }) {
   const [selectedCategory, setSelectedCategory] = useState('todos');
   const [sortBy, setSortBy] = useState('destacados');
+
+  // Parte 4 — Estado lento: avisa si el servidor tarda en despertar (Render free tier)
+  const [lento, setLento] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setLento(false);
+      return;
+    }
+    const t = setTimeout(() => setLento(true), 5000);
+    return () => clearTimeout(t);
+  }, [isLoading]);
 
   // Filtrado y ordenamiento de productos
   const filteredProducts = useMemo(() => {
@@ -231,6 +243,13 @@ export default function CatalogView({
           <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-amber-100 flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-amber-800 border-t-transparent"></div>
             <p className="font-serif text-lg font-bold text-amber-950">Preparando los mejores flanes para ti...</p>
+            {lento && (
+              <p role="status" className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">
+                {lento
+                  ? 'Despertando el servidor, la primera visita puede tardar un minuto…'
+                  : 'Cargando productos…'}
+              </p>
+            )}
           </div>
         )}
 
