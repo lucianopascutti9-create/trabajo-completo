@@ -16,10 +16,15 @@ if config.config_file_name is not None:
 
 # --- Leer DATABASE_URL desde settings (variables de entorno), no desde alembic.ini ---
 from app.core.config import settings
-config.set_main_option(
-    "sqlalchemy.url",
-    settings.DATABASE_URL.replace("%", "%%")
-)
+
+_url = settings.DATABASE_URL
+if _url.startswith("postgresql://"):
+    _url = _url.replace("postgresql://", "postgresql+psycopg2://", 1)
+elif _url.startswith("postgres://"):
+    _url = _url.replace("postgres://", "postgresql+psycopg2://", 1)
+
+config.set_main_option("sqlalchemy.url", _url.replace("%", "%%"))
+
 
 # Apuntar al metadata de los modelos para soporte de autogenerate
 from app.database import Base

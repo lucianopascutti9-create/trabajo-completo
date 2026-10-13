@@ -16,7 +16,18 @@ from app.core.config import settings
 # ---------------------------------------------------------------------------
 # Engine — objeto central que gestiona la conexión con la base de datos.
 # ---------------------------------------------------------------------------
-engine = create_engine(settings.DATABASE_URL)
+
+# Forzar el driver psycopg2 explícitamente para evitar que SQLAlchemy 2.x
+# intente usar psycopg v3 (que no está instalado).
+_db_url = settings.DATABASE_URL
+if _db_url.startswith("postgresql://"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+elif _db_url.startswith("postgres://"):
+    # Render a veces devuelve "postgres://" (sin ql)
+    _db_url = _db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+
+engine = create_engine(_db_url)
+
 
 # ---------------------------------------------------------------------------
 # SessionLocal — fábrica de sesiones.
