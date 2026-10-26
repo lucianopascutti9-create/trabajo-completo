@@ -49,6 +49,14 @@ def get_db():
 # ---------------------------------------------------------------------------
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+# Token opcional: extrae el Bearer del header si existe, pero no falla si no hay
+from fastapi import Request
+async def optional_token(request: Request) -> str | None:
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth.split(" ", 1)[1]
+    return None
+
 
 # ---------------------------------------------------------------------------
 # get_current_user — valida el JWT del header Authorization: Bearer <token>

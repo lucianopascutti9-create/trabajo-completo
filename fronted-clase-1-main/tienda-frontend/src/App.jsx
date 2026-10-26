@@ -194,6 +194,7 @@ function AppContent() {
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     setUser(null);
     showToast('Sesión cerrada', 'Has cerrado tu sesión correctamente.', 'info');
   };
@@ -262,6 +263,12 @@ function AppContent() {
             onContinueShopping={() => navigateTo('catalogo')}
             onSelectProduct={handleSelectProduct}
             onNavigateToHistory={() => navigateTo('mis-pedidos')}
+            onNavigateToLogin={() => navigateTo('cuenta')}
+            user={user}
+            onAddSampleItem={() => {
+              const flan = productos[0] || FLANES_DATA[0];
+              handleAddToCart(flan, 1, '¡Para disfrutar en familia!');
+            }}
           />
         )}
 

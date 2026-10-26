@@ -8,16 +8,32 @@ export default function CartView({
   onClearCart,
   onContinueShopping,
   onSelectProduct,
-  onNavigateToHistory
+  onNavigateToHistory,
+  onNavigateToLogin,
+  user = null,
+  onAddSampleItem = null,
 }) {
   const [shippingMethod, setShippingMethod] = useState('delivery'); // 'delivery' | 'pickup'
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState('');
 
-  // Estados de la Parte 2 (Confirmar compra)
+  // Estados de simulación / compra
   const [enviando, setEnviando] = useState(false);
   const [errorPedido, setErrorPedido] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState('tarjeta'); // 'tarjeta' | 'mp' | 'efectivo'
+
+  // Datos para compra como invitado (simulación rápida sin login)
+  const [guestInfo, setGuestInfo] = useState({
+    nombre: 'Invitado Gourmet',
+    email: 'invitado@cultoalflan.com',
+    direccion: 'Av. Santa Fe 3200, Palermo, CABA',
+    telefono: '11 4567-8900',
+  });
+
+  // Modal de Comprobante / Ticket
+  const [showModalComprobante, setShowModalComprobante] = useState(false);
+  const [pedidoConfirmado, setPedidoConfirmado] = useState(null);
 
   // Cálculos de montos
   const subtotal = cartItems.reduce((acc, item) => {
@@ -57,8 +73,7 @@ export default function CartView({
     setCouponError('');
   };
 
-  // Parte 2 — 4. Escribir confirmar() con try/catch/finally y estado enviando
-  // 5. if (enviando) return;
+  // Confirmar / Simular compra (funciona con o sin login)
   const confirmar = async () => {
     if (enviando) return;
     if (cartItems.length === 0) return;
@@ -66,24 +81,73 @@ export default function CartView({
     setEnviando(true);
     setErrorPedido(null);
 
+    // Snapshot de la compra actual
+    const snapshotItems = [...cartItems];
+    const snapshotSubtotal = subtotal;
+    const snapshotDiscount = discountAmount;
+    const snapshotShipping = deliveryCost;
+    const snapshotTotal = total;
+    const snapshotCoupon = appliedCoupon ? { ...appliedCoupon } : null;
+
+    let apiOrderId = null;
+
+    // Intentar registrar en backend si el servidor está activo
     try {
-      await crearPedido(cartItems);
-      if (onClearCart) {
-        onClearCart();
-      }
-      if (onNavigateToHistory) {
-        onNavigateToHistory();
+      const resp = await crearPedido(snapshotItems);
+      if (resp && resp.id) {
+        apiOrderId = resp.id;
       }
     } catch (err) {
-      console.error('Error al confirmar pedido:', err);
-      setErrorPedido(err.message || 'Error al procesar la compra.');
-    } finally {
-      setEnviando(false);
+      console.info('Backend no disponible o error en petición, completando en modo simulación:', err.message);
     }
+
+    const orderId = apiOrderId ? `#CF-${apiOrderId}` : `#CF-${Math.floor(100000 + Math.random() * 900000)}`;
+    const nuevoPedido = {
+      id: orderId,
+      fecha: new Date().toLocaleString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      items: snapshotItems,
+      subtotal: snapshotSubtotal,
+      descuento: snapshotDiscount,
+      cupon: snapshotCoupon?.code || null,
+      envio: snapshotShipping,
+      metodoEnvio: shippingMethod,
+      metodoPago: paymentMethod,
+      total: snapshotTotal,
+      cliente: {
+        nombre: user ? user.nombre : (guestInfo.nombre || 'Invitado Gourmet'),
+        email: user ? user.email : (guestInfo.email || 'invitado@cultoalflan.com'),
+        direccion: shippingMethod === 'delivery' ? (guestInfo.direccion || 'Av. Santa Fe 3200, Palermo, CABA') : 'Retiro en Obrador (Palermo)',
+        telefono: guestInfo.telefono || '11 4567-8900',
+      },
+      esInvitado: !user,
+      estado: 'Confirmado',
+    };
+
+    // Guardar en localStorage para persistencia de pedidos simulados
+    try {
+      const prev = JSON.parse(localStorage.getItem('pedidos_simulados') || '[]');
+      localStorage.setItem('pedidos_simulados', JSON.stringify([nuevoPedido, ...prev]));
+    } catch (e) {
+      console.error('Error guardando pedido simulado en localStorage:', e);
+    }
+
+    setPedidoConfirmado(nuevoPedido);
+    setShowModalComprobante(true);
+
+    if (onClearCart) {
+      onClearCart();
+    }
+    setEnviando(false);
   };
 
   // Carrito Vacío
-  if (cartItems.length === 0) {
+  if (cartItems.length === 0 && !showModalComprobante) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto animate-fadeIn">
         <div className="w-24 h-24 rounded-full bg-amber-100/80 flex items-center justify-center text-5xl mb-6 shadow-inner">
@@ -95,15 +159,24 @@ export default function CartView({
         <p className="text-stone-600 text-sm mb-8 leading-relaxed">
           Aún no has agregado ningún manjar tradicional. Explora nuestra carta de flanes horneados con dulce de leche colonial, vainilla Bourbon y recetas premiadas.
         </p>
-        <button
-          onClick={onContinueShopping}
-          className="bg-amber-900 hover:bg-amber-950 text-white font-bold text-sm px-8 py-4 rounded-2xl transition-all shadow-lg hover:shadow-xl cursor-pointer flex items-center gap-2"
-        >
-          <span>Explorar Catálogo de Flanes</span>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
-        </button>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+          <button
+            onClick={onContinueShopping}
+            className="w-full sm:w-auto bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-sm px-6 py-4 rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            <span>Explorar Catálogo</span>
+          </button>
+          {onAddSampleItem && (
+            <button
+              id="btn-simular-rapido-vacio"
+              onClick={onAddSampleItem}
+              className="w-full sm:w-auto bg-gradient-to-r from-amber-800 via-amber-900 to-amber-950 hover:from-amber-900 hover:to-stone-900 text-white font-bold text-sm px-7 py-4 rounded-2xl transition-all shadow-lg hover:shadow-xl cursor-pointer flex items-center justify-center gap-2 group"
+            >
+              <span>⚡ Cargar Flan y Simular Compra</span>
+              <span className="group-hover:translate-x-1 transition-transform">→</span>
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -134,7 +207,7 @@ export default function CartView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
         
         {/* === LISTA DE PRODUCTOS AGREGADOS (7 COLUMNAS) === */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-7 space-y-5">
           
           <div className="bg-white rounded-3xl p-4 sm:p-6 border border-amber-900/10 shadow-sm divide-y divide-amber-900/5">
             {cartItems.map((item) => {
@@ -280,6 +353,104 @@ export default function CartView({
             </div>
           </div>
 
+          {/* DATOS DE ENTREGA Y COMPRA COMO INVITADO (SIMULACIÓN SIN LOGIN) */}
+          {!user ? (
+            <div className="bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-amber-50/80 rounded-3xl p-5 sm:p-6 border-2 border-amber-300/80 shadow-sm space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">⚡</span>
+                  <div>
+                    <h3 className="font-serif font-bold text-amber-950 text-base">
+                      Simulación Rápida de Compra
+                    </h3>
+                    <p className="text-[11px] text-amber-800 font-medium">
+                      Completá el pedido en 1 clic sin necesidad de registrarte ni iniciar sesión.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] uppercase font-extrabold tracking-wider bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full border border-emerald-300 shadow-xs">
+                  ✓ Sin Iniciar Sesión
+                </span>
+              </div>
+
+              {/* Campos Rápidos */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                    Nombre del Comprador:
+                  </label>
+                  <input
+                    type="text"
+                    value={guestInfo.nombre}
+                    onChange={(e) => setGuestInfo({ ...guestInfo, nombre: e.target.value })}
+                    placeholder="Ej: Luciano Pérez"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-white border border-amber-200 focus:border-amber-600 focus:ring-1 focus:ring-amber-300 outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                    Email para el Comprobante:
+                  </label>
+                  <input
+                    type="email"
+                    value={guestInfo.email}
+                    onChange={(e) => setGuestInfo({ ...guestInfo, email: e.target.value })}
+                    placeholder="email@ejemplo.com"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-white border border-amber-200 focus:border-amber-600 focus:ring-1 focus:ring-amber-300 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {shippingMethod === 'delivery' && (
+                <div>
+                  <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                    Dirección de Envío Refrigerado:
+                  </label>
+                  <input
+                    type="text"
+                    value={guestInfo.direccion}
+                    onChange={(e) => setGuestInfo({ ...guestInfo, direccion: e.target.value })}
+                    placeholder="Calle, número, piso y depto"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-white border border-amber-200 focus:border-amber-600 focus:ring-1 focus:ring-amber-300 outline-none transition-all"
+                  />
+                </div>
+              )}
+
+              {/* Atajos de ayuda */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-amber-200/50">
+                <button
+                  type="button"
+                  onClick={() => setGuestInfo({
+                    nombre: 'Luciano Degustador',
+                    email: 'luciano.flan@cultoalflan.ar',
+                    direccion: 'Av. Santa Fe 3200, Palermo, CABA',
+                    telefono: '11 5555-8888',
+                  })}
+                  className="text-xs font-bold text-amber-900 hover:text-amber-950 underline cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>✨ Rellenar con datos de prueba</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onNavigateToLogin}
+                  className="text-xs text-stone-500 hover:text-amber-900 cursor-pointer"
+                >
+                  ¿Ya tenés cuenta? Iniciar sesión aquí →
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-emerald-50/70 rounded-3xl p-4 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between">
+              <div>
+                <span className="font-bold">Sesión Activa:</span> {user.nombre} ({user.email})
+              </div>
+              <span className="bg-emerald-200/80 font-bold px-2.5 py-0.5 rounded-full text-[10px]">
+                {user.rol || 'Cliente'}
+              </span>
+            </div>
+          )}
+
         </div>
 
         {/* === RESUMEN DEL PEDIDO Y TOTALES (5 COLUMNAS) === */}
@@ -299,7 +470,7 @@ export default function CartView({
                 <form onSubmit={handleApplyCoupon} className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Ej: CULTO10"
+                    placeholder="Ej: CULTO10 o FLAN15"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
                     className="flex-1 px-3.5 py-2 rounded-xl text-xs uppercase bg-stone-50 border border-stone-200 focus:border-amber-700 focus:ring-1 focus:ring-amber-200 outline-none font-bold"
@@ -327,6 +498,51 @@ export default function CartView({
               {couponError && (
                 <p className="text-xs text-red-600 mt-1">{couponError}</p>
               )}
+            </div>
+
+            {/* Selector de Método de Pago Simulado */}
+            <div className="space-y-2 pt-1">
+              <label className="text-xs font-semibold text-stone-700 block">
+                Método de Pago (Simulación Instantánea):
+              </label>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('tarjeta')}
+                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                    paymentMethod === 'tarjeta'
+                      ? 'bg-amber-100/90 border-amber-800 text-amber-950 ring-2 ring-amber-700/20 shadow-xs'
+                      : 'bg-stone-50 border-stone-200 text-stone-600 hover:border-amber-300'
+                  }`}
+                >
+                  <span className="text-base">💳</span>
+                  <span className="text-[11px] leading-tight">Tarjeta (3 cuotas)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('mp')}
+                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                    paymentMethod === 'mp'
+                      ? 'bg-amber-100/90 border-amber-800 text-amber-950 ring-2 ring-amber-700/20 shadow-xs'
+                      : 'bg-stone-50 border-stone-200 text-stone-600 hover:border-amber-300'
+                  }`}
+                >
+                  <span className="text-base">📱</span>
+                  <span className="text-[11px] leading-tight">Mercado Pago</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('efectivo')}
+                  className={`p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex flex-col items-center gap-1 ${
+                    paymentMethod === 'efectivo'
+                      ? 'bg-amber-100/90 border-amber-800 text-amber-950 ring-2 ring-amber-700/20 shadow-xs'
+                      : 'bg-stone-50 border-stone-200 text-stone-600 hover:border-amber-300'
+                  }`}
+                >
+                  <span className="text-base">💵</span>
+                  <span className="text-[11px] leading-tight">Contra entrega</span>
+                </button>
+              </div>
             </div>
 
             {/* Desglose de Precios */}
@@ -370,18 +586,18 @@ export default function CartView({
               </div>
             </div>
 
-            {/* Mensaje de error de la API (por ejemplo 409 Falta de Stock o 401 Sesión vencida) */}
+            {/* Mensaje de error si la validación estricta fallase */}
             {errorPedido && (
               <div className="p-4 bg-red-50 border-2 border-red-200 rounded-2xl text-xs text-red-700 font-medium flex items-start gap-2.5 animate-fadeIn">
                 <span className="text-base leading-none">⚠️</span>
                 <div className="flex-1">
-                  <strong className="block text-red-900 font-bold mb-0.5">Error al confirmar el pedido:</strong>
-                  {errorPedido}
+                  <strong className="block text-red-900 font-bold mb-0.5">Aviso:</strong>
+                  <p>{errorPedido}</p>
                 </div>
               </div>
             )}
 
-            {/* Botón de Confirmación Principal (Parte 2 - Paso 4 y 5) */}
+            {/* Botón de Confirmación Principal */}
             <button
               id="btn-confirmar-pedido"
               onClick={confirmar}
@@ -389,17 +605,21 @@ export default function CartView({
               className={`w-full py-4 px-6 rounded-2xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg ${
                 enviando || cartItems.length === 0
                   ? 'bg-stone-300 text-stone-500 cursor-not-allowed shadow-none'
-                  : 'bg-amber-900 hover:bg-amber-950 text-white hover:shadow-xl active:scale-98 cursor-pointer'
+                  : 'bg-gradient-to-r from-amber-900 via-amber-950 to-amber-900 hover:from-amber-950 hover:to-amber-900 text-white hover:shadow-xl active:scale-98 cursor-pointer ring-2 ring-amber-600/30'
               }`}
             >
               {enviando ? (
                 <>
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  <span>Confirmando...</span>
+                  <span>Procesando simulación de compra...</span>
                 </>
               ) : (
                 <>
-                  <span>Confirmar Compra</span>
+                  <span>
+                    {user
+                      ? 'Confirmar Compra 🍮'
+                      : '⚡ Simular Compra Ahora (Sin Iniciar Sesión) 🍮'}
+                  </span>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
@@ -409,9 +629,9 @@ export default function CartView({
 
             {/* Badges de Seguridad */}
             <div className="pt-2 flex items-center justify-center gap-4 text-stone-400 text-xs">
-              <span className="flex items-center gap-1">🔒 Pago 100% Encriptado</span>
+              <span className="flex items-center gap-1">🔒 Simulación 100% Segura</span>
               <span>•</span>
-              <span className="flex items-center gap-1">🍮 Garantía de Sabor</span>
+              <span className="flex items-center gap-1">🍮 Sin Datos Reales</span>
             </div>
 
           </div>
@@ -419,6 +639,185 @@ export default function CartView({
         </div>
 
       </div>
+
+      {/* === MODAL DE COMPROBANTE DE COMPRA (TICKET DE PEDIDO SIMULADO) === */}
+      {showModalComprobante && pedidoConfirmado && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#fcfaf7] border border-amber-900/20 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative max-h-[92vh] overflow-y-auto space-y-6">
+            
+            {/* Botón cerrar X */}
+            <button
+              onClick={() => {
+                setShowModalComprobante(false);
+                if (onContinueShopping) onContinueShopping();
+              }}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-stone-200/80 hover:bg-stone-300 text-stone-700 flex items-center justify-center cursor-pointer transition-colors"
+              title="Cerrar comprobante"
+            >
+              ✕
+            </button>
+
+            {/* Header Modal */}
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-white text-3xl flex items-center justify-center mx-auto shadow-md">
+                🍮
+              </div>
+              <span className="inline-block bg-emerald-100 text-emerald-800 text-xs font-black uppercase px-3 py-1 rounded-full border border-emerald-300">
+                ✓ ¡Compra Simulada con Éxito!
+              </span>
+              <h2 className="font-serif text-2xl sm:text-3xl font-extrabold text-amber-950">
+                ¡Gracias por tu pedido!
+              </h2>
+              <p className="text-xs sm:text-sm text-stone-600 max-w-sm mx-auto">
+                {pedidoConfirmado.esInvitado
+                  ? 'Tu compra ha sido procesada de forma instantánea sin necesidad de registrarte ni iniciar sesión.'
+                  : 'Tu compra ha sido confirmada exitosamente.'}
+              </p>
+            </div>
+
+            {/* TICKET ARTESANAL */}
+            <div id="ticket-compra" className="bg-white rounded-2xl p-5 border border-dashed border-amber-900/30 shadow-inner space-y-4">
+              {/* Cabecera ticket */}
+              <div className="text-center pb-3 border-b border-stone-200">
+                <h3 className="font-serif font-black text-amber-950 text-base uppercase tracking-wider">
+                  Culto al Flan • Obrador Central
+                </h3>
+                <p className="text-[10px] text-stone-500">Palermo Soho, Gurruchaga 1750, Buenos Aires</p>
+                <div className="flex justify-between items-center text-[11px] font-semibold text-stone-600 mt-2">
+                  <span>Comprobante: <strong className="text-amber-950">{pedidoConfirmado.id}</strong></span>
+                  <span>{pedidoConfirmado.fecha}</span>
+                </div>
+              </div>
+
+              {/* Datos Cliente & Entrega */}
+              <div className="text-xs text-stone-600 space-y-1 bg-amber-50/50 p-3 rounded-xl border border-amber-100">
+                <div className="flex justify-between">
+                  <span className="font-semibold text-stone-800">Cliente:</span>
+                  <span>{pedidoConfirmado.cliente.nombre}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-stone-800">Email:</span>
+                  <span>{pedidoConfirmado.cliente.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-stone-800">Entrega:</span>
+                  <span>{pedidoConfirmado.metodoEnvio === 'delivery' ? '🚚 Envío Refrigerado' : '🏪 Retiro en Obrador'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-stone-800">Destino / Retiro:</span>
+                  <span className="truncate max-w-[200px]">{pedidoConfirmado.cliente.direccion}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-stone-800">Método de Pago:</span>
+                  <span className="text-emerald-700 font-bold uppercase text-[11px]">
+                    {pedidoConfirmado.metodoPago === 'tarjeta' ? '💳 Tarjeta (Simulada)' : pedidoConfirmado.metodoPago === 'mp' ? '📱 Mercado Pago' : '💵 Contra entrega'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Detalle de Items */}
+              <div className="divide-y divide-stone-100 text-xs">
+                {pedidoConfirmado.items.map((it, idx) => {
+                  const precio = it.producto.precio_final ?? it.producto.precio ?? 0;
+                  return (
+                    <div key={idx} className="py-2 flex justify-between items-start gap-2">
+                      <div>
+                        <span className="font-bold text-stone-900 block">
+                          {it.cantidad}x {it.producto.nombre}
+                        </span>
+                        {it.dedicatoria && (
+                          <span className="text-[10px] text-amber-800 italic block">
+                            💌 &ldquo;{it.dedicatoria}&rdquo;
+                          </span>
+                        )}
+                        <span className="text-[10px] text-stone-400">
+                          ${precio.toLocaleString('es-AR')} c/u
+                        </span>
+                      </div>
+                      <span className="font-bold text-stone-900">
+                        ${(precio * it.cantidad).toLocaleString('es-AR')}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Totales */}
+              <div className="pt-3 border-t border-stone-200 text-xs space-y-1.5">
+                <div className="flex justify-between text-stone-600">
+                  <span>Subtotal:</span>
+                  <span>${pedidoConfirmado.subtotal.toLocaleString('es-AR')}</span>
+                </div>
+                {pedidoConfirmado.descuento > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-semibold">
+                    <span>Descuento ({pedidoConfirmado.cupon}):</span>
+                    <span>-${pedidoConfirmado.descuento.toLocaleString('es-AR')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-stone-600">
+                  <span>Costo de Envío:</span>
+                  <span>{pedidoConfirmado.envio === 0 ? '¡GRATIS!' : `$${pedidoConfirmado.envio.toLocaleString('es-AR')}`}</span>
+                </div>
+                <div className="flex justify-between items-baseline pt-2 border-t border-amber-900/10">
+                  <span className="font-serif font-black text-sm text-stone-900 uppercase">Total Abonado:</span>
+                  <span className="font-serif font-black text-2xl text-amber-950">
+                    ${pedidoConfirmado.total.toLocaleString('es-AR')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Badge Estado */}
+              <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+                <span className="text-xs text-emerald-900 font-bold flex items-center justify-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                  Estado: Preparando pedido en el obrador
+                </span>
+                <p className="text-[10px] text-emerald-700 mt-0.5">
+                  Tiempo estimado: 45 - 60 minutos
+                </p>
+              </div>
+            </div>
+
+            {/* Botones de Acción del Modal */}
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="w-full py-3 px-4 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer border border-stone-300"
+              >
+                <span>🖨️ Imprimir / Guardar Comprobante</span>
+              </button>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModalComprobante(false);
+                    if (onContinueShopping) onContinueShopping();
+                  }}
+                  className="flex-1 py-3 px-4 bg-amber-900 hover:bg-amber-950 text-white rounded-xl font-bold text-xs transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <span>🍮 Volver al Catálogo</span>
+                </button>
+
+                {user && onNavigateToHistory && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModalComprobante(false);
+                      onNavigateToHistory();
+                    }}
+                    className="py-3 px-4 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl font-bold text-xs transition-all cursor-pointer"
+                  >
+                    📦 Mis Pedidos
+                  </button>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

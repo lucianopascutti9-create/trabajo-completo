@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { loginUsuario, getUsuarioActual } from '../services/api';
+import { loginUsuario, getUsuarioActual, registrarUsuario } from '../services/api';
 
 export default function AccountView({ 
   user, 
@@ -88,7 +88,7 @@ export default function AccountView({
     }
   };
 
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     setRegError('');
 
@@ -102,14 +102,33 @@ export default function AccountView({
       return;
     }
 
-    onRegister({
-      nombre: regName,
-      email: regEmail,
-      telefono: regPhone,
-      newsletter: regNewsletter,
-      es_admin: false,
-      memberSince: '2025'
-    });
+    setIsSubmitting(true);
+    try {
+      // 1. Crear cuenta en el backend
+      await registrarUsuario({
+        nombre: regName,
+        email: regEmail,
+        password: regPassword,
+        acepto_tratamiento: true,
+      });
+
+      // 2. Login automático para obtener el JWT real y guardarlo en localStorage
+      await loginUsuario(regEmail, regPassword);
+      const me = await getUsuarioActual();
+
+      onRegister({
+        id: me.id,
+        nombre: me.nombre,
+        email: me.email,
+        rol: me.rol,
+        es_admin: me.rol === 'admin',
+        memberSince: new Date().getFullYear().toString(),
+      });
+    } catch (err) {
+      setRegError(err.message || 'Error al crear la cuenta. Intentá de nuevo.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleForgotSubmit = (e) => {
@@ -480,9 +499,10 @@ export default function AccountView({
 
               <button
                 type="submit"
-                className="w-full py-3.5 px-4 rounded-xl bg-amber-900 hover:bg-amber-950 text-white font-bold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg cursor-pointer"
+                disabled={isSubmitting}
+                className="w-full py-3.5 px-4 rounded-xl bg-amber-900 hover:bg-amber-950 disabled:opacity-50 text-white font-bold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg cursor-pointer"
               >
-                Crear Mi Cuenta
+                {isSubmitting ? 'Creando cuenta...' : 'Crear Mi Cuenta'}
               </button>
 
             </form>

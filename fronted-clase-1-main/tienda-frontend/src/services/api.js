@@ -6,6 +6,35 @@ export function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+// Intenta renovar el access_token usando el refresh_token guardado
+async function intentarRefresh() {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    if (!res.ok) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      return false;
+    }
+    const data = await res.json();
+    if (data.access_token) {
+      localStorage.setItem('access_token', data.access_token);
+    }
+    if (data.refresh_token) {
+      localStorage.setItem('refresh_token', data.refresh_token);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // 3. Manejar respuesta según consigna:
 // - 401 traducido (sesión vencida)
 // - 409 mostrando el detail tal como viene del backend (falta de stock)
@@ -57,14 +86,25 @@ export async function crearPedido(items) {
     })),
   };
 
-  const response = await fetch(`${BASE_URL}/pedidos`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-    },
-    body: JSON.stringify(payload),
-  });
+  const doRequest = () =>
+    fetch(`${BASE_URL}/pedidos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeaders(),
+      },
+      body: JSON.stringify(payload),
+    });
+
+  let response = await doRequest();
+
+  // Si el token expiró, intentar refresh y reintentar una sola vez
+  if (response.status === 401) {
+    const refreshed = await intentarRefresh();
+    if (refreshed) {
+      response = await doRequest();
+    }
+  }
 
   return manejarRespuesta(response);
 }
@@ -82,6 +122,27 @@ export async function getMisPedidos() {
 }
 
 // Funciones de autenticación contra FastAPI
+
+// Registrar un nuevo usuario en el backend
+export async function registrarUsuario({ nombre, email, password, acepto_tratamiento = true }) {
+  const response = await fetch(`${BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, email, password, acepto_tratamiento }),
+  });
+
+  if (!response.ok) {
+    let errorMsg = 'Error al registrar la cuenta';
+    try {
+      const err = await response.json();
+      errorMsg = err.detail || errorMsg;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+
+  return response.json();
+}
+
 export async function loginUsuario(username, password) {
   const formData = new URLSearchParams();
   formData.append('username', username);
@@ -107,6 +168,9 @@ export async function loginUsuario(username, password) {
   const data = await response.json();
   if (data.access_token) {
     localStorage.setItem('access_token', data.access_token);
+  }
+  if (data.refresh_token) {
+    localStorage.setItem('refresh_token', data.refresh_token);
   }
   return data;
 }

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.dependencies import get_db, get_current_user
+from app.dependencies import get_db, get_current_user, optional_token
 from app.models import Usuario, Producto, Pedido, ItemPedido, SolicitudRevocacion
 from app.schemas.pedido import PedidoCreate, PedidoOut, ItemPedidoOut
 
@@ -20,14 +20,29 @@ router = APIRouter(prefix="/pedidos", tags=["pedidos"])
 def crear_pedido(
     pedido_in: PedidoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    token: str = Depends(optional_token),
 ):
     """
     Crea un pedido validando stock y calculando el total desde la base de datos.
+    - Funciona con o sin sesión iniciada (compra como invitado).
     - Rechaza si no hay stock suficiente con 409 Conflict.
     - Descuenta las unidades del stock del producto.
-    - Guarda el pedido asociado al usuario autenticado.
     """
+    # Intentar obtener el usuario del token si existe
+    current_user_id = None
+    if token:
+        try:
+            from jose import jwt as jose_jwt
+            from app.core.config import settings
+            payload = jose_jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            email = payload.get("sub")
+            if email:
+                usuario = db.query(Usuario).filter(Usuario.email == email).first()
+                if usuario and usuario.activo:
+                    current_user_id = usuario.id
+        except Exception:
+            pass  # Token inválido o vencido — continúa como invitado
+
     total_calculado = 0.0
     items_a_crear = []
 
@@ -61,7 +76,7 @@ def crear_pedido(
     # Crear el pedido
     ahora = datetime.utcnow()
     nuevo_pedido = Pedido(
-        usuario_id=current_user.id,
+        usuario_id=current_user_id,
         total=total_calculado,
         estado="confirmado",
         creado_en=ahora

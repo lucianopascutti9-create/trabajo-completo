@@ -443,6 +443,10 @@ export default function ProductDetailView({
 
             </div>
 
+            <p className="text-[11px] text-center text-stone-500 font-medium">
+              ✨ Podés simular y completar tu compra en 1 clic sin necesidad de registrarte ni iniciar sesión.
+            </p>
+
             {/* Total estimado */}
             <div className="text-center text-xs text-stone-500 pt-1">
               Subtotal por {cantidad} {cantidad === 1 ? 'unidad' : 'unidades'}:{' '}

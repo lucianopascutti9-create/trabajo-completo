@@ -54,7 +54,7 @@ class Pedido(Base):
     __tablename__ = "pedidos"
 
     id                = Column(Integer, primary_key=True, index=True)
-    usuario_id        = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    usuario_id        = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
     total             = Column(Float,  default=0.0)
     estado            = Column(String, default="pendiente")
     creado_en         = Column(DateTime, nullable=True)
