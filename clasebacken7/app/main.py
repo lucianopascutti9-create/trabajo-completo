@@ -31,6 +31,13 @@ from app.routers import usuarios
 # ---------------------------------------------------------------------------
 Base.metadata.create_all(bind=engine)
 
+# Sincronizar catálogo con los productos definidos
+try:
+    from app.seed import seed as run_seed
+    run_seed()
+except Exception as e:
+    print(f"Advertencia al ejecutar seed al inicio: {e}")
+
 
 # ---------------------------------------------------------------------------
 # Inicialización de la aplicación
