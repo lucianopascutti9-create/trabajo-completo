@@ -6,16 +6,21 @@
  */
 
 export function urlImagen(producto) {
-  if (!producto || !producto.imagen_url) {
+  if (!producto) {
     return null;
   }
 
-  const rawUrl = producto.imagen_url.trim();
+  const rawUrl = (producto.imagen_url || producto.imagen || '').trim();
   if (!rawUrl) return null;
 
   // Si ya es una URL completa (http/https), devolverla directamente
   if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
     return rawUrl;
+  }
+
+  // Si apunta directamente a un asset público local (comienza con /flan_)
+  if (rawUrl.startsWith('/flan_') || rawUrl.startsWith('flan_')) {
+    return rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
   }
 
   const baseUrl = import.meta.env.VITE_API_URL ?? '';
