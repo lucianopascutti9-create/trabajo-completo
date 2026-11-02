@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { crearPedido } from '../services/api';
+import { useConectado } from '../hooks/useConectado';
 
 export default function CartView({
   cartItems = [],
@@ -18,7 +19,7 @@ export default function CartView({
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState('');
 
-  // Estados de simulación / compra
+  const conectado = useConectado();
   const [enviando, setEnviando] = useState(false);
   const [errorPedido, setErrorPedido] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('tarjeta'); // 'tarjeta' | 'mp' | 'efectivo'
@@ -597,13 +598,19 @@ export default function CartView({
               </div>
             )}
 
+            {!conectado && (
+              <p role="status" className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 font-semibold text-center animate-fadeIn">
+                Podés mirar el catálogo, pero para comprar necesitás internet.
+              </p>
+            )}
+
             {/* Botón de Confirmación Principal */}
             <button
               id="btn-confirmar-pedido"
               onClick={confirmar}
-              disabled={enviando || cartItems.length === 0}
+              disabled={!conectado || enviando || cartItems.length === 0}
               className={`w-full py-4 px-6 rounded-2xl font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg ${
-                enviando || cartItems.length === 0
+                !conectado || enviando || cartItems.length === 0
                   ? 'bg-stone-300 text-stone-500 cursor-not-allowed shadow-none'
                   : 'bg-gradient-to-r from-amber-900 via-amber-950 to-amber-900 hover:from-amber-950 hover:to-amber-900 text-white hover:shadow-xl active:scale-98 cursor-pointer ring-2 ring-amber-600/30'
               }`}
@@ -616,7 +623,9 @@ export default function CartView({
               ) : (
                 <>
                   <span>
-                    {user
+                    {!conectado
+                      ? 'Sin conexión para comprar'
+                      : user
                       ? 'Confirmar Compra 🍮'
                       : '⚡ Simular Compra Ahora (Sin Iniciar Sesión) 🍮'}
                   </span>
