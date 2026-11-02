@@ -9,15 +9,18 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
       includeAssets: ['favicon.ico', 'logo.svg', 'apple-touch-icon-180x180.png'],
       manifest: {
+        id: '/',
+        start_url: '/',
+        scope: '/',
         name: 'Culto al Flan',
         short_name: 'CultoAlFlan',
         description: 'Tienda de postres tradicionales de autor con despacho en el día',
         theme_color: '#78350f',
         background_color: '#faf6f0',
         display: 'standalone',
-        start_url: '/',
         icons: [
           {
             src: 'pwa-64x64.png',
