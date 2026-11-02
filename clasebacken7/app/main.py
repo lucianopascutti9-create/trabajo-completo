@@ -10,6 +10,7 @@ Ejecutar con:
 import os
 from pathlib import Path
 from fastapi import FastAPI, Depends
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -64,6 +65,17 @@ app.add_middleware(
 )
 
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+class StaticConCache(StaticFiles):
+    async def get_response(self, path, scope):
+        respuesta = await super().get_response(path, scope)
+        if respuesta.status_code == 200:
+            respuesta.headers["Cache-Control"] = "public, max-age=2592000, immutable"
+        return respuesta
+
+
 # ---------------------------------------------------------------------------
 # Routers
 # ---------------------------------------------------------------------------
@@ -73,18 +85,18 @@ app.include_router(productos.router)
 app.include_router(pedidos.router)
 app.include_router(usuarios.router)
 
-# Montar directorio estático para servir imágenes según el contrato DSI2 (/static/productos/...)
+# Montar directorio estático para servir imágenes con encabezados de caché
 static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 os.makedirs(os.path.join(static_dir, "productos"), exist_ok=True)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-# Crear carpeta de uploads para imágenes subidas en producción
 Path("uploads/productos").mkdir(parents=True, exist_ok=True)
 
-# Montar /demo → app/static/demo (imágenes de demo que van en el repositorio)
+# Montar /static con StaticConCache (soporta tanto /static de archivos como uploads)
+app.mount("/static", StaticConCache(directory=static_dir), name="static")
+
+# Montar /demo → app/static/demo con StaticConCache
 _demo_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "demo")
 os.makedirs(_demo_dir, exist_ok=True)
-app.mount("/demo", StaticFiles(directory=_demo_dir), name="demo")
+app.mount("/demo", StaticConCache(directory=_demo_dir), name="demo")
 
 
 # ---------------------------------------------------------------------------

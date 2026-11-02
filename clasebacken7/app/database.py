@@ -26,7 +26,11 @@ elif _db_url.startswith("postgres://"):
     # Render a veces devuelve "postgres://" (sin ql)
     _db_url = _db_url.replace("postgres://", "postgresql+psycopg2://", 1)
 
-engine = create_engine(_db_url)
+engine = create_engine(
+    _db_url,
+    pool_pre_ping=True,
+    pool_recycle=300,
+)
 
 
 # ---------------------------------------------------------------------------
